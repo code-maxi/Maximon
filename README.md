@@ -1,1 +1,1 @@
-# jufo-react-client
+# Jufo React Client
