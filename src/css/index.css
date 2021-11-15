@@ -129,4 +129,12 @@ body {
 .tabpanel.hidden {
   display: none;
 }
+
+#game-container {
+  -webkit-box-flex: 1;
+      -ms-flex-positive: 1;
+          flex-grow: 1;
+  -ms-flex-negative: 1;
+      flex-shrink: 1;
+}
 /*# sourceMappingURL=index.css.map */

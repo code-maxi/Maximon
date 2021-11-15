@@ -87,3 +87,8 @@ body {
     display: block;
     &.hidden { display: none; }
 }
+
+#game-container {
+    flex-grow: 1;
+    flex-shrink: 1;
+}

@@ -21,7 +21,7 @@ export class GameActor extends ex.Actor {
     setup() {}
 
     szene() { return this.scene as GameSzene }
-    game() { return this.szene().game() as Game }
+    game() { return this.szene().game as Game }
     unit() { return this.szene().unit() }
 
     onDraw(g: CanvasRenderingContext2D, e: ex.PostDrawEvent) {

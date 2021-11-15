@@ -3,7 +3,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { Alert, Button, ButtonGroup, Checkbox, Collapse, Divider, IconButton, List, ListItem, ListItemButton, ListItemText, ListSubheader, Slider, TextField, Typography } from "@mui/material";
 import React from "react";
-import { elementType, fullElementName, GroundDataI, ObjectDataI } from "../../../game/dec";
+import { elementType, fullElementName, GroundDataI, GameActorI, GeoActorI } from "../../../game/dec";
 import { NumberInput } from "../../adds";
 
 export const listData: {
@@ -23,20 +23,20 @@ export const listData: {
     },
     {
         title: 'Einstammelbare Objekte',
-        items:  [ {n: 'Stern', e: 'star'}, {n: 'Münze', e: 'coin'} ]
+        items:  [ {n: 'Stern', e: 'score'}, {n: 'Münze', e: 'score'} ]
     }
 ]
 
 export function ElementDrawer(p: {
     onAddSelect: (e: elementType) => void,
-    onESUpdate: (e: ObjectDataI) => void,
+    onESUpdate: (e: any) => void,
     onModeChange: (e: number) => void,
-    selectedItem?: ObjectDataI,
+    selectedItem?: any,
     addSelected?: elementType,
     mode: number
 }) {
     React.useEffect(() => {
-        if (!p.selectedItem) p.onModeChange(1)
+        if (!p.selectedItem && p.mode === 2) p.onModeChange(1)
     })
     return <div id="drawer">
             <ButtonGroup className="p-buttons">
@@ -50,7 +50,7 @@ export function ElementDrawer(p: {
                     color="primary"
                     variant={ p.mode === 2 ? 'contained' : 'outlined' }
                     startIcon={ <AddCircleRoundedIcon /> }
-                    sx={ p.selectedItem ? undefined : { display: 'none' } }
+                    disabled={ p.selectedItem === undefined }
                     onClick={() => p.onModeChange(2)}
                 >Bearbeiten</Button>
             </ButtonGroup>
@@ -58,7 +58,7 @@ export function ElementDrawer(p: {
             {
                 p.mode === 1 ? <ElementAddList onAddSelect={p.onAddSelect} selected={p.addSelected} />
                     : <div>
-                        <Alert severity={ p.selectedItem ? 'success' : 'info' }>{
+                        <Alert severity={ p.selectedItem ? 'success' : 'info' } style={ {marginTop: '10px'} }>{
                             p.selectedItem ? 'Es wurde \'' + fullElementName(p.selectedItem) + '\' ausgewählt.'
                                 : 'Du musst etwas auswählen...'
                         }</Alert>
@@ -86,49 +86,15 @@ export function ElementAddList(p: {
 }
 
 export function ElementSettings(p: {
-    onESUpdate: (e: ObjectDataI) => void
-    item: ObjectDataI
+    onESUpdate: (e: any) => void
+    item: any
 }) {
     const [sCollapse, setSCollapse] = React.useState(p.item.speechbuble !== undefined)
 
     const elementSettings = () => {
         let i: React.ReactElement | undefined = undefined
 
-        if (p.item.type === 'ground') {
-            const c = p.item as GroundDataI
-             i = <React.Fragment>
-                 <ListItem>
-                    <ListItemText>Breite</ListItemText>
-                    <NumberInput value={ c.width } onChange={ v => p.onESUpdate({
-                        ...p.item,
-                        width: v
-                    } as GroundDataI) } />
-                </ListItem>
-                <ListItem>
-                   <ListItemText>Höhe</ListItemText>
-                    <NumberInput value={ c.height } onChange={ v => p.onESUpdate({
-                        ...p.item,
-                        height: v
-                    } as GroundDataI) } />
-                </ListItem>
-                <ListSubheader>Rote Dreiecke</ListSubheader>
-                <ListItem>
-                   
-                </ListItem>
-             </React.Fragment>
-        }
-
-        return i
-    }
-
-    return <div className="tab-2">
-        <Typography variant="subtitle1">Element Einstellungen</Typography>
-        <List>
-            <ListItem secondaryAction={
-                <IconButton color="error"><DeleteRoundedIcon /></IconButton>
-            }>
-                <ListItemText>Element entfernen?</ListItemText>
-            </ListItem>
+        const speechBuble = () => <React.Fragment>
             <ListItem secondaryAction={
                 <Checkbox
                     checked={sCollapse}
@@ -181,7 +147,46 @@ export function ElementSettings(p: {
                     />
                 </ListItem>
             </Collapse>
-            { elementSettings() }
+        </React.Fragment>
+
+        if (p.item.type === 'ground') {
+            const c = p.item as GeoActorI<GroundDataI>
+             i = <React.Fragment>
+                { speechBuble() }
+                <ListItem>
+                    <ListItemText>Breite</ListItemText>
+                    <NumberInput value={ c.geo.width } onChange={ v => p.onESUpdate({
+                        ...p.item,
+                        width: v
+                    } as GroundDataI) } />
+                </ListItem>
+                <ListItem>
+                   <ListItemText>Höhe</ListItemText>
+                    <NumberInput value={ c.geo.height } onChange={ v => p.onESUpdate({
+                        ...p.item,
+                        height: v
+                    } as GroundDataI) } />
+                </ListItem>
+                <ListSubheader>Rote Dreiecke</ListSubheader>
+                <ListItem>
+                   
+                </ListItem>
+             </React.Fragment>
+        }
+
+        return i
+    }
+
+    return <div className="tab-2">
+        <Typography variant="subtitle1">Element Einstellungen</Typography>
+        <List>
+            <ListItem secondaryAction={
+                <IconButton color="error"><DeleteRoundedIcon /></IconButton>
+            }>
+                <ListItemText>Element entfernen?</ListItemText>
+            </ListItem>
+            
+            { p.item !== undefined ? elementSettings() : '' }
         </List>
     </div>
 }

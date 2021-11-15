@@ -6,6 +6,7 @@ import { Game } from "./game"
 export class GameSzene extends ex.Scene {
     static hoverColor = 'rgba(255, 144, 0'
     static sizeSelection: elementType[] = ['ground']
+    game: Game
 
     settings: SzeneDataI
     name = ''
@@ -14,19 +15,28 @@ export class GameSzene extends ex.Scene {
     refPoint: VectorI | undefined = undefined
     pointer: ex.Vector | null = null
 
-    constructor(s: SzeneDataI) {
+    constructor(s: SzeneDataI, game: Game) {
         super()
+        this.game = game
         this.settings = s
         this.setup()
     }
 
+    onPostDraw(g: CanvasRenderingContext2D) {
+        g.fillStyle = 'red'
+        g.fillRect(0,0, 30, 30)
+    }
+
     setup() {
         this.initInputs()
+        this.camera.clearAllStrategies()
+        console.log('szene init')
 
         this.on('postdraw', e => {
-            e.ctx.fillStyle = 'blue'
+            /*e.ctx.fillStyle = 'red'
             e.ctx.fillRect(100,100,100,100)
-            if (this.game().editMode) {
+
+            if (this.game.editMode) {
                 if (this.pointer) this.drawHoverRect(
                     e.ctx,
                     this.pointer.x,
@@ -43,7 +53,7 @@ export class GameSzene extends ex.Scene {
                         'fd', 0.15
                     )
                 }
-            }
+            }*/
         })
 
         this.importData(this.settings.obj)
@@ -51,8 +61,8 @@ export class GameSzene extends ex.Scene {
     }
 
     initInputs() {
-        this.game().input.pointers.on('down', e => {
-            const s = this.game().addType
+        this.game.input.pointers.on('down', e => {
+            const s = this.game.addType
             if (s) {
                 const b = GameSzene.sizeSelection.includes(s)
 
@@ -72,7 +82,7 @@ export class GameSzene extends ex.Scene {
             }
         })
 
-        this.game().input.pointers.on('move', e => {
+        this.game.input.pointers.on('move', e => {
             this.pointer = e.worldPos
 
             if (this.refPoint) {
@@ -91,8 +101,8 @@ export class GameSzene extends ex.Scene {
             }
         })
 
-        this.game().input.pointers.on('leave', e => { this.pointer = null })
-        this.game().input.pointers.on('enter', e => { this.pointer = e.worldPos })
+        this.game.input.pointers.on('leave', e => { this.pointer = null })
+        this.game.input.pointers.on('enter', e => { this.pointer = e.worldPos })
     }
 
     private drawHoverRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, style: string, i?: number) {
@@ -112,7 +122,6 @@ export class GameSzene extends ex.Scene {
         this.addPrev = undefined
     }
 
-    game() { return this.engine as Game }
     unit() { return this.settings.opt.cellSize }
 
     grid(s: number) { return Math.trunc(s / this.unit()) }

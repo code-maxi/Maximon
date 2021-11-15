@@ -1,16 +1,15 @@
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import React from "react";
-import { SettingsDrawer, StandartSettings } from "./drawer/settings";
+import { SettingsDrawer } from "./drawer/settings";
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { TabPanel } from "../adds";
 import { ElementDrawer } from "./drawer/drawer";
-import { gameCanvas, GameCanvas } from "../../game/canvas";
 import { elementType, GroundDataI } from '../../game/dec';
-import { GameActor } from '../../game/actors/gameActor';
-import { GeoActor } from '../../game/actors/geoActor';
 import { ReactGame } from '../../game/game';
+import { gameEditor } from './gameEditor/gameEditor';
+import { editorTemplates } from './gameEditor/objects/object';
 
 export class Editor extends React.Component<{}, {
     addSelectedItem?: elementType,
@@ -24,12 +23,8 @@ export class Editor extends React.Component<{}, {
         super(p)
         this.state = {
             mode: 2,
-            tab: 2,
-            selectedItem: {
-                type: 'ground',
-                pos: { x: 0, y: 0 },
-                width: 1
-            } as GroundDataI
+            tab: 1,
+            selectedItem: undefined
         }
     }
 
@@ -41,9 +36,11 @@ export class Editor extends React.Component<{}, {
         })
     }
 
+    //<ReactGame />
+
     render() {
         return <div id="editor">
-            <div>
+            <div id="game-container">
                 <ReactGame />
             </div>
             <div id="game-settings">
@@ -51,6 +48,7 @@ export class Editor extends React.Component<{}, {
                     <div className="tab-p-h">
                         <Tabs centered value={this.state.tab} onChange={(_: React.SyntheticEvent, newValue: number) => {
                             this.setState({ ...this.state, tab: newValue })
+                            console.log('tab clicked!')
                         }} aria-label="lab API tabs example">
 
                             <Tab label="Einstellungen" value={1} icon={ <SettingsRoundedIcon /> } />
@@ -61,8 +59,9 @@ export class Editor extends React.Component<{}, {
                         <SettingsDrawer onSave={ () => {} } />
                     </TabPanel>
                     <TabPanel value={2} index={this.state.tab}>
-                        <ElementDrawer
+                         <ElementDrawer
                             onAddSelect={ (e) => {
+                                gameEditor.gameCanvas?.setAddingElement(editorTemplates[e](0))
                                 this.setState({ ...this.state, addSelectedItem: e })
                             } }
                             onESUpdate={ (e) => {

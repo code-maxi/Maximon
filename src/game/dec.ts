@@ -1,19 +1,14 @@
-export type elementType = 'start' | 'target' | 'ground'
+export type elementType = 'start-end' | 'ground' | 'score'
 
 export interface VectorI {
     x: number
     y: number
 }
 
-export function fullElementName(t: ElementDataI) {
+export function fullElementName(t: elementType) {
     let i = '[ERROR]'
-    if (t.type === 'start') i = 'Spiel-Start'
-    if (t.type === 'target') i = 'Spiel-Ziel'
-    if (t.type === 'ground') {
-        i = 'Boden (' 
-            + t.geo.width 
-            + ' | ' + t.geo.height + ')'
-    }
+    if (t === 'start-end') i = 'Spiel Start/Ende'
+    if (t === 'ground') i = 'Boden'
     return i
 }
 
@@ -47,6 +42,13 @@ export interface GroundDataI {
         bottom: boolean, 
         right: boolean
     }
+}
+
+export interface StartEndDataI {
+    type: 'start' | 'end'
+}
+export interface ScoreDataI {
+    type: 'coin' | 'star'
 }
 
 export interface DebugOptI {

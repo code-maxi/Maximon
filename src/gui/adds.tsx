@@ -57,3 +57,12 @@ export function NumberInput(p: {
         <IconButton onClick={() => { setVal(''+(+value - 1)) }}><RemoveCircleIcon /></IconButton>
     </div>
 }
+
+export function objToArr<T>(o: any): T[] {
+    let arr: T[] = []
+    for (let key in o) {
+        try { arr.push(o[key] as T) }
+        catch { console.log('cast-err') }
+    }
+    return arr
+}

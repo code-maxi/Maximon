@@ -50,7 +50,7 @@ export class Ground extends GeoActor {
     }
 
     useCollider() {
-        const s = this.settings
+        const s = this.settings ? this.settings : {}
         let lt = new ex.Vector(0,0)
         let lb = new ex.Vector(0,this.height)
         let rb = new ex.Vector(this.width,this.height)
