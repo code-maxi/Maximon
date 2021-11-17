@@ -31,9 +31,12 @@ body {
         $item-control-width: 170px;
         $tab-padding: 20px;
 
-        height: 100%;
+        max-height: 100vh;
+        overflow: auto;
         flex: 0 0 $drawer-width;
         box-shadow: 0 0 15px rgba(0,0,0, 0.3);
+
+
 
         .tab-p {
             width: 100%;
@@ -54,7 +57,8 @@ body {
             }
             #drawer {
                 .tab-2 {
-                    @include my-flex-box($m: 5px)
+                    @include my-flex-box($m: 5px);
+                    
                 }
 
                 .MuiListItemButton-root {
@@ -85,10 +89,31 @@ body {
 
 .tabpanel {
     display: block;
+    
     &.hidden { display: none; }
 }
 
 #game-container {
     flex-grow: 1;
     flex-shrink: 1;
+    position: relative;
+    .test-button, .zoom-button-group {
+        position: absolute;
+        z-index: 10;
+    }
+    .zoom-button-group {
+        left: 10px;
+        bottom: 10px;
+    }
+    .test-button {
+        right: 10px;
+        bottom: 10px;
+    }
+}
+
+.my-title {
+    font-size: 1.1rem !important;
+    color: rgb(107, 107, 107);
+    font-weight: 400 !important;
+    margin-bottom: -10px !important;
 }

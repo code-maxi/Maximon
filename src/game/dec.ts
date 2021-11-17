@@ -5,10 +5,11 @@ export interface VectorI {
     y: number
 }
 
-export function fullElementName(t: elementType) {
+export function fullElementName(t: any) {
     let i = '[ERROR]'
-    if (t === 'start-end') i = 'Spiel Start/Ende'
-    if (t === 'ground') i = 'Boden'
+    if (t.type === 'start-end') i = 'Spiel Start/Ende'
+    if (t.type === 'ground') i = 'Boden'
+    if (t.type === 'score') i = 'Score-Objekt'
     return i
 }
 
@@ -19,8 +20,11 @@ export interface BoxI {
     h: number
 }
 
-export interface GameActorI<T> {
-    type: string
+export interface TypeableI {
+    type: elementType
+}
+
+export interface GameActorI<T> extends TypeableI {
     custom: T
 }
 

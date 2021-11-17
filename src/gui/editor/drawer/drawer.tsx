@@ -5,39 +5,22 @@ import { Alert, Button, ButtonGroup, Checkbox, Collapse, Divider, IconButton, Li
 import React from "react";
 import { elementType, fullElementName, GroundDataI, GameActorI, GeoActorI } from "../../../game/dec";
 import { NumberInput } from "../../adds";
-
-export const listData: {
-    title: string,
-    items: {
-        n: string,
-        e: elementType
-    }[]
-}[] = [
-    {
-        title: 'Start und Ziel',
-        items:  [ {n: 'Start', e: 'start'}, {n: 'Ziel', e: 'target'} ]
-    },
-    {
-        title: 'Böden',
-        items:  [ {n: 'Normaler Boden', e: 'ground'} ]
-    },
-    {
-        title: 'Einstammelbare Objekte',
-        items:  [ {n: 'Stern', e: 'score'}, {n: 'Münze', e: 'score'} ]
-    }
-]
+import { editorTemplates } from '../gameEditor/objects/object';
+import { game } from '../../../game/game';
+import { gameEditor } from '../gameEditor/gameEditor';
+import { cellSize } from '../editor';
 
 export function ElementDrawer(p: {
-    onAddSelect: (e: elementType) => void,
+    onAddSelect: (e: string) => void,
     onESUpdate: (e: any) => void,
     onModeChange: (e: number) => void,
     selectedItem?: any,
-    addSelected?: elementType,
+    addSelected?: string,
     mode: number
 }) {
-    React.useEffect(() => {
+    /*React.useEffect(() => {
         if (!p.selectedItem && p.mode === 2) p.onModeChange(1)
-    })
+    })*/
     return <div id="drawer">
             <ButtonGroup className="p-buttons">
                 <Button
@@ -50,7 +33,6 @@ export function ElementDrawer(p: {
                     color="primary"
                     variant={ p.mode === 2 ? 'contained' : 'outlined' }
                     startIcon={ <AddCircleRoundedIcon /> }
-                    disabled={ p.selectedItem === undefined }
                     onClick={() => p.onModeChange(2)}
                 >Bearbeiten</Button>
             </ButtonGroup>
@@ -58,7 +40,7 @@ export function ElementDrawer(p: {
             {
                 p.mode === 1 ? <ElementAddList onAddSelect={p.onAddSelect} selected={p.addSelected} />
                     : <div>
-                        <Alert severity={ p.selectedItem ? 'success' : 'info' } style={ {marginTop: '10px'} }>{
+                        <Alert severity={ p.selectedItem ? 'success' : 'error' } style={ {marginTop: '10px', marginBottom: '20px'} }>{
                             p.selectedItem ? 'Es wurde \'' + fullElementName(p.selectedItem) + '\' ausgewählt.'
                                 : 'Du musst etwas auswählen...'
                         }</Alert>
@@ -69,17 +51,22 @@ export function ElementDrawer(p: {
 }
 
 export function ElementAddList(p: {
-    onAddSelect: (e: elementType) => void,
-    selected?: elementType
+    onAddSelect: (e: string) => void,
+    selected?: string
 }) {
-    return <React.Fragment>{ listData.map((l, i) => <List className="tab-1">
+    return <React.Fragment>{ editorTemplates.map((l, i) => <List className="tab-1">
         { i !== 0 ? <Divider /> : undefined }
         <ListSubheader>{ l.title }</ListSubheader>
         {
             l.items.map(i => <ListItemButton 
-                selected={ p.selected === i.e }
-                onClick={() => { p.onAddSelect(i.e) }}>
-                <ListItemText> { i.n } </ListItemText>
+                selected={ p.selected === i.name }
+                onClick={() => {
+                    if (i.name !== p.selected) {
+                        gameEditor.gameCanvas?.setAddingElement(i.templ(cellSize))
+                        p.onAddSelect(i.name)
+                    }
+                }}>
+                <ListItemText> { i.name } </ListItemText>
             </ListItemButton>) 
         }
     </List>) }</React.Fragment>
@@ -178,7 +165,7 @@ export function ElementSettings(p: {
     }
 
     return <div className="tab-2">
-        <Typography variant="subtitle1">Element Einstellungen</Typography>
+        <Typography className="my-title" variant="subtitle1">Element Einstellungen</Typography>
         <List>
             <ListItem secondaryAction={
                 <IconButton color="error"><DeleteRoundedIcon /></IconButton>

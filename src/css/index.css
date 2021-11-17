@@ -29,7 +29,8 @@ body {
 }
 
 #editor #game-settings {
-  height: 100%;
+  max-height: 100vh;
+  overflow: auto;
   -webkit-box-flex: 0;
       -ms-flex: 0 0 430px;
           flex: 0 0 430px;
@@ -136,5 +137,28 @@ body {
           flex-grow: 1;
   -ms-flex-negative: 1;
       flex-shrink: 1;
+  position: relative;
+}
+
+#game-container .test-button, #game-container .zoom-button-group {
+  position: absolute;
+  z-index: 10;
+}
+
+#game-container .zoom-button-group {
+  left: 10px;
+  bottom: 10px;
+}
+
+#game-container .test-button {
+  right: 10px;
+  bottom: 10px;
+}
+
+.my-title {
+  font-size: 1.1rem !important;
+  color: #6b6b6b;
+  font-weight: 400 !important;
+  margin-bottom: -10px !important;
 }
 /*# sourceMappingURL=index.css.map */

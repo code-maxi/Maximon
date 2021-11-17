@@ -8,11 +8,15 @@ import { TabPanel } from "../adds";
 import { ElementDrawer } from "./drawer/drawer";
 import { elementType, GroundDataI } from '../../game/dec';
 import { ReactGame } from '../../game/game';
-import { gameEditor } from './gameEditor/gameEditor';
+import { GameEditor, gameEditor } from './gameEditor/gameEditor';
 import { editorTemplates } from './gameEditor/objects/object';
 
+export const cellSize = 50
+
+export let editor: Editor
+
 export class Editor extends React.Component<{}, {
-    addSelectedItem?: elementType,
+    addSelectedItem?: string,
     mode: number,
     tab: number,
     selectedItem?: any
@@ -22,15 +26,18 @@ export class Editor extends React.Component<{}, {
     constructor(p: any) {
         super(p)
         this.state = {
-            mode: 2,
-            tab: 1,
-            selectedItem: undefined
+            mode: 1,
+            tab: 2,
+            selectedItem: 'Böden'
         }
+        editor = this
     }
 
-    setES(o: any, update?: boolean) {
+    setES(o: any, updateState?: boolean, updateGame?: boolean) {
         this.elementSettings = o
-        if (update === true) this.setState({
+
+        if (updateGame === true) gameEditor.gameCanvas?.updateSelected(this.elementSettings)
+        if (updateState === true) this.setState({
             ...this.state,
             selectedItem: this.elementSettings
         })
@@ -40,9 +47,7 @@ export class Editor extends React.Component<{}, {
 
     render() {
         return <div id="editor">
-            <div id="game-container">
-                <ReactGame />
-            </div>
+            <GameEditor />
             <div id="game-settings">
                 <div className="tab-p">
                     <div className="tab-p-h">
@@ -61,11 +66,10 @@ export class Editor extends React.Component<{}, {
                     <TabPanel value={2} index={this.state.tab}>
                          <ElementDrawer
                             onAddSelect={ (e) => {
-                                gameEditor.gameCanvas?.setAddingElement(editorTemplates[e](0))
                                 this.setState({ ...this.state, addSelectedItem: e })
                             } }
                             onESUpdate={ (e) => {
-                                this.setES(e)
+                                this.setES(e, false, true)
                             } } 
                             onModeChange={ (e) => {
                                 this.setState({ ...this.state, mode: e })
