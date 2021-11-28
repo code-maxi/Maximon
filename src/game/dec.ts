@@ -65,7 +65,8 @@ export interface SzeneDataOptI {
     difficulty: number,
     creator: string,
     globalGravity: number,
-    cellSize: number
+    cellSize: number,
+    cellDivides: number
 }
 
 export interface SzeneDataObjI {

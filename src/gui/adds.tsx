@@ -89,6 +89,7 @@ export const V = {
     square(a: number): VectorI { return { x:a,y:a } },
     scalarProduct(a: VectorI, b: VectorI) { return a.x*b.x + a.y*b.y },
     abs(v: VectorI): VectorI { return { x: Math.abs(v.x), y: Math.abs(v.y) } },
+    vec(x: number, y: number): VectorI { return { x: x, y: y } },
     trunc(v: VectorI): VectorI { return { x: Math.trunc(v.x), y: Math.trunc(v.y) } },
     includesPoint(point: VectorI, pos: VectorI, size: VectorI) {
         const pos2 = this.add(pos, size)

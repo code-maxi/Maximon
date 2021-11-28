@@ -2,9 +2,9 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ex from "excalibur";
 import React from "react";
-import { VectorI } from "../../../game/dec";
+import { ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
 import { modulo, V } from "../../adds";
-import { EditorObject, EditorObjectGeneric } from "./objects/object";
+import { EditorObject, EditorObjectGeneric, GroundEditorObject } from "./objects/object";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
 
@@ -14,7 +14,9 @@ interface GameEditorStateI {
     cursor: string
 }
 
-interface GameEditorPropsI {}
+interface GameEditorPropsI {
+    startData: SzeneDataOptI
+}
 
 export let gameEditor: GameEditor
 export function gameCanvas() { return gameEditor!.gameCanvas! }
@@ -64,7 +66,7 @@ export class GameEditor extends React.Component<GameEditorPropsI, GameEditorStat
         })
     }
     componentDidMount() {
-        this.gameCanvas = new GameEditorCanvas(this.canvas!, s => {
+        this.gameCanvas = new GameEditorCanvas(this.canvas!, this.props.startData, s => {
             this.setState({ ...this.state, cursor: s })
         })
         this.packSize()
@@ -72,8 +74,11 @@ export class GameEditor extends React.Component<GameEditorPropsI, GameEditorStat
     }
 }
 
+
+
 export class GameEditorCanvas {
     canvas: HTMLCanvasElement
+
     private cursor: VectorI = {x:0,y:0}
     private eye: VectorI = {x:0,y:0}
     private scaling = 1
@@ -87,11 +92,14 @@ export class GameEditorCanvas {
     private buttonsPressed: boolean[] = [false, false, false]
     private buttonsPos: (VectorI | undefined)[] = [undefined, undefined, undefined]
 
+    data: SzeneDataOptI
+
     setCursor: (c: string) => void
 
     paintGrid = true
 
-    constructor(gc: HTMLCanvasElement, sc: (c: string) => void) {
+    constructor(gc: HTMLCanvasElement, data: SzeneDataOptI, sc: (c: string) => void) {
+        this.data = data
         this.canvas = gc
         this.setCursor = sc
 
@@ -129,7 +137,6 @@ export class GameEditorCanvas {
 
         this.canvas.onmousemove = m => {
             this.setCanvasCursor(m)
-            this.addingElement?.moveTo(this.cursor)
 
             if (this.buttonsPressed[1])
                 this.eye = V.add(this.oldEye, V.delta({x:m.clientX, y:m.clientY}, this.diffPoint))
@@ -142,6 +149,21 @@ export class GameEditorCanvas {
         this.canvas.onwheel = e => {
             this.zoom(e.deltaY * (-0.0005))
         }
+
+        this.eye.y = this.canvas.height/2
+        this.eye.x = this.canvas.width/2
+
+        this.elements.push(new EditorObjectGeneric<ScoreDataI>(
+            'score', { type: 'star' },
+            40, 40, true
+        ))
+        this.select(this.elements[0])
+
+        this.paint()
+    }
+
+    dividedCellSize() {
+        return this.data.cellSize / this.data.cellDivides
     }
 
     allElements() { return this.addingElement ? [ ...this.elements, this.addingElement ] : this.elements }
