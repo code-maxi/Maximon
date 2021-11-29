@@ -85,8 +85,8 @@ export class GameEditorCanvas {
     private oldEye = this.eye
     private diffPoint: VectorI = {x:0, y:0}
 
-    private addingElement: EditorObject | undefined = undefined
-    private selectedElement: EditorObject | undefined = undefined
+    private addingType: [string, string] | undefined
+    private selectedElement: EditorObject | undefined
 
     private elements: EditorObject[] = []
     private buttonsPressed: boolean[] = [false, false, false]
@@ -97,6 +97,7 @@ export class GameEditorCanvas {
     setCursor: (c: string) => void
 
     paintGrid = true
+    
 
     constructor(gc: HTMLCanvasElement, data: SzeneDataOptI, sc: (c: string) => void) {
         this.data = data
@@ -166,12 +167,22 @@ export class GameEditorCanvas {
         return this.data.cellSize / this.data.cellDivides
     }
 
-    allElements() { return this.addingElement ? [ ...this.elements, this.addingElement ] : this.elements }
+    snapPos(v: VectorI, divides?: boolean, center?: boolean) {
+        const s = this.data.cellSize / (divides === true ? this.data.cellDivides : 1) 
+        return V.add(V.mul(V.trunc(V.mul(v, 1/s)), s), center === true ? { x: s/2, y: -s/2 } : V.zero())
+    }
+
+    snapToGrid(v: VectorI, divides: boolean) {
+        const cellSize = divides ? this.dividedCellSize() : this.data.cellSize
+        return this.snapPos(V.add(v, V.mul({x: cellSize, y: -cellSize}, 0.5)), divides)
+    }
+
+    allElements() { return this.addingType ? [ ...this.elements, this.addingType ] : this.elements }
 
     fixAddingElement() {
-        if (this.addingElement) {
-            this.elements.push(this.addingElement)
-            this.addingElement = undefined
+        if (this.addingType) {
+            this.elements.push(this.addingType)
+            this.addingType = undefined
         }
     }
 
@@ -216,7 +227,7 @@ export class GameEditorCanvas {
         { x: 1/this.scaling, y: -1/this.scaling }
     ) }
     setCanvasCursor(m: MouseEvent) { this.cursor = this.worldCoords({x:m.clientX, y:m.clientY}) }
-    setAddingElement(o: EditorObject) { this.addingElement = o }
+    setAddingElement(o: EditorObject) { this.addingType = o }
 
     paint() {
         const g = this.canvas.getContext('2d')!
@@ -232,7 +243,7 @@ export class GameEditorCanvas {
         g.fillStyle = 'red'
         g.fillRect(0, 0, 20, 20)
         this.elements.forEach(e => e.paint(g))
-        this.addingElement?.paint(g)
+        this.addingType?.paint(g)
 
         g.restore()
     }
