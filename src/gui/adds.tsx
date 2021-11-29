@@ -5,6 +5,8 @@ import { Box } from "@mui/system";
 import React from 'react';
 import { VectorI } from '../game/dec';
 
+export type snapType = 'none' | 'big' | 'small'
+
 export interface TabPanelProps {
     children?: React.ReactNode
     index: number
@@ -94,6 +96,62 @@ export const V = {
     includesPoint(point: VectorI, pos: VectorI, size: VectorI) {
         const pos2 = this.add(pos, size)
         return point.x >= pos.x && point.y >= pos.y && point.x <= pos2.x && point.y <= pos2.y
+    }
+}
+
+export const Creative = {
+    paintBordersAround(
+        g: CanvasRenderingContext2D,
+        pos: VectorI,
+        size: VectorI,
+        strokeStyle?: string,
+        padding?: (s: number) => number
+    ) {
+        g.strokeStyle = strokeStyle ? strokeStyle : 'red'
+        g.lineWidth = 3
+        g.lineCap = 'round'
+        g.beginPath()
+
+        const corner = (p1: VectorI, p2: VectorI, p3: VectorI) => {
+            const cs = padding ? padding(size.x + size.y) : (size.x + size.y)/200 * 10 + 5
+            const padd = 3
+            const p = V.add(
+                V.add(
+                    V.mulVec(p2, { x:size.x + 2*padd, y:size.y + 2*padd }),
+                    { x:-padd, y:-padd }
+                ), pos
+            )
+            const line = (v: VectorI, move: boolean) => {
+                if (move) g.moveTo(v.x, v.y)
+                else g.lineTo(v.x, v.y)
+            }
+            line(V.add(V.mul(p1, cs), p), true)
+            line(p, false)
+            line(V.add(V.mul(p3, cs), p), false)
+        }
+
+        corner(
+            {x:0, y:1},
+            {x:0, y:0},
+            {x:1, y:0}
+        )
+        corner(
+            {x:-1, y:0},
+            {x:1, y:0},
+            {x:0, y:1}
+        )
+        corner(
+            {x:0, y:-1},
+            {x:1, y:1},
+            {x:-1, y:0}
+        )
+        corner(
+            {x:0, y:-1},
+            {x:0, y:1},
+            {x:1, y:0}
+        )
+
+        g.stroke()
     }
 }
 
