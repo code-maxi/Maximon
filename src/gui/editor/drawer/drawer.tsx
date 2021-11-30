@@ -4,18 +4,18 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { Alert, Button, ButtonGroup, Checkbox, Collapse, Divider, IconButton, List, ListItem, ListItemButton, ListItemText, ListSubheader, Slider, TextField, Typography } from "@mui/material";
 import React from "react";
 import { elementType, fullElementName, GroundDataI, GameActorI, GeoActorI } from "../../../game/dec";
-import { NumberInput } from "../../adds";
+import { Arr, NumberInput } from "../../adds";
 import { editorTemplates } from '../gameEditor/objects/object';
 import { game } from '../../../game/game';
 import { gameEditor } from '../gameEditor/gameEditor';
 import { cellSize } from '../editor';
 
 export function ElementDrawer(p: {
-    onAddSelect: (e: string) => void,
+    onAddSelect: (e: [string, string]) => void,
     onESUpdate: (e: any) => void,
     onModeChange: (e: number) => void,
     selectedItem?: any,
-    addSelected?: string,
+    addSelected?: [string, string],
     mode: number
 }) {
     /*React.useEffect(() => {
@@ -51,19 +51,18 @@ export function ElementDrawer(p: {
 }
 
 export function ElementAddList(p: {
-    onAddSelect: (e: string) => void,
-    selected?: string
+    onAddSelect: (e: [string, string]) => void,
+    selected?: [string, string]
 }) {
     return <React.Fragment>{ editorTemplates.map((l, i) => <List className="tab-1">
         { i !== 0 ? <Divider /> : undefined }
         <ListSubheader>{ l.title }</ListSubheader>
         {
             l.items.map(i => <ListItemButton 
-                selected={ p.selected === i.name }
+                selected={ Arr.equal([l.title, i.name], p.selected) }
                 onClick={() => {
-                    if (i.name !== p.selected) {
-                        gameEditor.gameCanvas?.setAddingElement(i.templ(cellSize))
-                        p.onAddSelect(i.name)
+                    if (!Arr.equal([l.title, i.name], p.selected)) {
+                        p.onAddSelect([l.title, i.name])
                     }
                 }}>
                 <ListItemText> { i.name } </ListItemText>

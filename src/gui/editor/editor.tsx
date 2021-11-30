@@ -8,15 +8,16 @@ import { TabPanel } from "../adds";
 import { ElementDrawer } from "./drawer/drawer";
 import { elementType, GroundDataI } from '../../game/dec';
 import { ReactGame } from '../../game/game';
-import { GameEditor, gameEditor } from './gameEditor/gameEditor';
+import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
 import { editorTemplates } from './gameEditor/objects/object';
+import { loadImages } from '../images';
 
 export const cellSize = 50
 
 export let editor: Editor
 
 export class Editor extends React.Component<{}, {
-    addSelectedItem?: string,
+    addSelectedItem?: [string,string],
     mode: number,
     tab: number,
     selectedItem?: any
@@ -28,9 +29,11 @@ export class Editor extends React.Component<{}, {
         this.state = {
             mode: 1,
             tab: 2,
-            selectedItem: 'Böden'
         }
         editor = this
+        loadImages([
+            [ 'plus', 'images/plus.png' ]
+        ], () => {})
     }
 
     setES(o: any, updateState?: boolean, updateGame?: boolean) {
@@ -43,11 +46,22 @@ export class Editor extends React.Component<{}, {
         })
     }
 
+    setAddingType(a?: [string, string]) {
+        this.setState({ ...this.state, addSelectedItem: a })
+    }
+
     //<ReactGame />
 
     render() {
         return <div id="editor">
-            <GameEditor />
+            <GameEditor startData={{
+                name: '',
+                difficulty: 2,
+                creator: '',
+                globalGravity: 4,
+                cellSize: 50,
+                cellDivides: 1
+            }} />
             <div id="game-settings">
                 <div className="tab-p">
                     <div className="tab-p-h">
@@ -66,6 +80,7 @@ export class Editor extends React.Component<{}, {
                     <TabPanel value={2} index={this.state.tab}>
                          <ElementDrawer
                             onAddSelect={ (e) => {
+                                gameCanvas.setAddingElement(e)
                                 this.setState({ ...this.state, addSelectedItem: e })
                             } }
                             onESUpdate={ (e) => {

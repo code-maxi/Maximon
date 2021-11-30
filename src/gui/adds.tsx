@@ -85,6 +85,16 @@ export const V = {
         v.forEach(i => sum = this.add(sum, i))
         return sum
     },
+    subToNull(a: VectorI, b: VectorI) {
+        return this.add(
+            a,
+            this.vec(
+                a.x > 0 ? -b.x : b.x,
+                a.y > 0 ? -b.y : b.y
+            )
+        )
+    },
+    half(v: VectorI) { return this.mul(v, 0.5) },
     sub(a: VectorI, b: VectorI): VectorI { return { x: a.x - b.x, y: a.y - b.y } },
     normalRight(v: VectorI): VectorI { return { x: v.y, y: -v.x } },
     e(v: VectorI): VectorI { return this.mul(v, 1/this.length(v)) },
@@ -97,6 +107,10 @@ export const V = {
         const pos2 = this.add(pos, size)
         return point.x >= pos.x && point.y >= pos.y && point.x <= pos2.x && point.y <= pos2.y
     }
+}
+
+export const Arr = {
+    equal<T>(a: T[], b?: T[]) { return b && JSON.stringify(a) === JSON.stringify(b) }
 }
 
 export const Creative = {

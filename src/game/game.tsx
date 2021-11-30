@@ -79,7 +79,8 @@ export class ReactGame extends React.Component {
                     difficulty: 4,
                     creator: '',
                     globalGravity: 0.2,
-                    cellSize: 40
+                    cellSize: 40,
+                    cellDivides: 1
                 },
                 obj: {
                     grounds: []
