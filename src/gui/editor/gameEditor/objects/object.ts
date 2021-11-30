@@ -8,7 +8,6 @@ import { gameCanvas, gameEditor } from "../gameEditor"
 export interface EditorObjectParams {
     key: elementType,
     img?: string,
-    fix: boolean,
     selected: boolean
 }
 
@@ -38,7 +37,7 @@ export interface ControlPointI {
         icon?: string
         shadow?: [ string, number ]
     }
-    snap?: 'big' | 'small'
+    snap?: boolean
     active?: boolean
     isMovingPos?: VectorI
     selfPaint?: (g: CanvasRenderingContext2D, c: ControlPointI, cPos: VectorI) => void
@@ -56,7 +55,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     controlPoints: ControlPointI[]
 
     constructor(cpt: ControlPointI[]) {
-        this.controlPoints = cpt.map(e => ({ ...e, pos: V.zero(), active: true }))
+        this.controlPoints = cpt.map(e => ({ ...e, pos: V.zero(), active: true, zIndex: e.zIndex ? e.zIndex : 0 }))
     }
         
     // Control Points
@@ -84,8 +83,8 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         let d = V.delta(oldMousePos, newMousePos)
         if (cpn.lockedAxis === 'x') d = V.mulVec(d, { x:1, y:0 })
         if (cpn.lockedAxis === 'y') d = V.mulVec(d, { x:0, y:1 })
-        if (cpn.snap) d = gameCanvas().snapToGrid(d, cpn.snap === 'small')
-        return V.add(cpn.isMovingPos!, d)
+        const res = V.add(cpn.isMovingPos!, d)
+        return cpn.snap ? d = gameCanvas.snapPos(res, 'grid-point') : res
     }
 
     updateControlPoints(newMousePos: VectorI, oldMousePos: VectorI) {
@@ -99,13 +98,25 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         }
     }
 
+    selectPoint(selected: string) {
+        this.controlPoints = this.controlPoints.map(
+            cp => selected && cp.key === selected ? { ...cp, isMovingPos: this.getCPPos(cp.key) } : cp)
+    }
+
     onMouseDown(evt: MouseEvent, mousePos: VectorI) {
-        let resFound = false
-        this.sortedCPs().map(c => {
-            const b = c.active === true && this.controlPointIncluded(c, mousePos) && evt.button === 0 && !resFound
-            if (b) resFound = true
-            return b ? { ...c, isMovingPos: mousePos } : c
-        })
+        if (evt.button === 0) {
+            let selected: [string,number] | undefined = undefined
+            this.controlPoints.forEach(cp => {
+                if (
+                    cp.active === true && 
+                    this.controlPointIncluded(cp, mousePos) && 
+                    (!selected || (selected && selected[1] < cp.zIndex!))
+                ) {
+                    selected = [ cp.key, cp.zIndex! ]
+                }
+            })
+            if (selected) this.selectPoint(selected[0])
+        }
     }
 
     onMouseMove(
@@ -118,7 +129,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     }
 
     onMouseUp(_evt: MouseEvent, _mousePos: VectorI) {
-        this.controlPoints.map(cp => ({ ...cp, isMovingPos: undefined }))
+        this.controlPoints = this.controlPoints.map(cp => ({ ...cp, isMovingPos: undefined }))
     }
 
     paintOneCP(g: CanvasRenderingContext2D, cp: ControlPointI) {
@@ -132,10 +143,13 @@ export abstract class EditorObjectControlPoints implements EditorObject {
                 g.fillStyle = cp.paint.fillColor ? cp.paint.fillColor : transp
                 
                 g.beginPath()
-                if (cp.shape === 'circle') g.arc(pos.x, pos.y, cp.size, 0, Math.PI*2)
+
+                const pos2 = gameCanvas.mcs(pos)
+
+                if (cp.shape === 'circle') g.arc(pos2.x, pos2.y, cp.size, 0, Math.PI*2)
                 if (cp.shape === 'rect') {
                     const mt = (x: number, y: number, f?: boolean) => {
-                        const p = V.mulVec(V.square(cp.size!), V.vec(x,y))
+                        const p = V.add(pos2, V.mulVec(V.square(cp.size!), V.vec(x,y)))
                         if (f === true) g.moveTo(p.x, p.y)
                         else g.lineTo(p.x, p.y)
                     }
@@ -156,9 +170,9 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         this.sortedCPs().forEach(cp => this.paintOneCP(g, cp))
     }
 
-    private controlPointIncluded(cp: ControlPointI, mousePos: VectorI) {
+    controlPointIncluded(cp: ControlPointI, mousePos: VectorI) {
         return cp.includesPoint ? cp.includesPoint(cp, mousePos)
-                    : V.distance(mousePos, this.getCPPos(cp.key)) <= cp.size!
+                    : V.distance(mousePos, this.getCPPos(cp.key)) <= cp.size!/gameCanvas.data.cellSize
     }
 }
 
@@ -170,16 +184,17 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     constructor(
         k: elementType, 
         custom: T,
+        pos: VectorI,
         w: number,
         h: number,
         cpt?: ControlPointI[],
-        fix?: boolean
     ) {
         super([
             ...(cpt ? cpt : []),
             {
                 key: 'move body',
                 shape: 'rect',
+                snap: true,
                 zIndex: -1,
                 pos: V.zero(),
                 includesPoint: (_, m) => this.includesPoint(m)
@@ -187,7 +202,6 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
         ])
         this.params = {
             key: k,
-            fix: fix ? fix : false,
             selected: false
         }
         this.data = {
@@ -195,13 +209,16 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
             geo: {
                 width: w,
                 height: h,
-                pos: { x:0, y:0 }
+                pos: pos
             },
             custom: custom
         }
     }
 
     g() { return this.data.geo }
+    gPosP() { return gameCanvas.mcs(this.g().pos) }
+    gWP() { return this.g().width * gameCanvas.data.cellSize }
+    gHP() { return this.g().height * gameCanvas.data.cellSize }
     getData() { return this.data }
     setData(d: GeoActorI<T>) { this.data = d }
 
@@ -211,35 +228,27 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     }
 
     paint(g: CanvasRenderingContext2D) {
-        g.fillStyle = this.params.fix ? 'rgb(50, 150, 255)' : 'rgba(50, 150, 255, 0.5)'
+        g.fillStyle = 'rgba(50, 150, 255, 0.5)'
         g.fillRect(
-            this.g().pos.x, 
-            this.g().pos.y, 
-            this.g().width,
-            this.g().height
+            this.gPosP().x, 
+            this.gPosP().y, 
+            this.gWP(),
+            this.gHP()
         )
         if (this.params.selected) this.paintBordersAround(g)
     }
 
     paintBordersAround(g: CanvasRenderingContext2D, strokeStyle?: string) {
         Creative.paintBordersAround(
-            g, this.g().pos, 
-            V.vec(this.g().width, this.g().height),
+            g, this.gPosP(), 
+            V.vec(this.gWP(), this.gHP()),
             strokeStyle
         )
     }
 
-    fixMeEvt(evt: MouseEvent, mousePos: VectorI) {
-        if (!this.params.fix && evt.button === 0) {
-            this.data.geo.pos = mousePos
-            gameCanvas().fixAddingElement()
-            this.params.fix = true
-        }
-    }
-
     selectEvt(_: MouseEvent, mousePos: VectorI) {
-        if (this.includesPoint(mousePos) && this.params.fix) {
-            gameCanvas().select(this)
+        if (this.includesPoint(mousePos)) {
+            gameCanvas.select(this)
         }
     }
 
@@ -248,32 +257,25 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     }
 
     getCPPos(key: string) {
-        const cs = gameCanvas().data.cellSize
-        if (key === 'move body') return V.add(this.g().pos, V.mul(V.vec(cs, -cs), 0.5))
+        if (key === 'move body') return this.g().pos
         else return super.getCPPos(key)
     }
     setCPPos(cp: VectorI, key: string) {
-        const cs = gameCanvas().data.cellSize
         super.setCPPos(cp, key)
-        if (key === 'move body') this.data.geo.pos = V.add(cp, V.mul(V.vec(-cs, cs), 0.5))
+        if (key === 'move body') this.data.geo.pos = cp
     }
 
     movedCPPos(nmp: VectorI, omp: VectorI, key: ControlPointI) {
-        if (!this.wasIMoved) gameCanvas().setCursor('move')
+        if (!this.wasIMoved) gameCanvas.setCursor('move')
         this.wasIMoved = true
         return super.movedCPPos(nmp, omp, key)
-    }
-
-    onMouseDown(evt: MouseEvent, mousePos: VectorI) {
-        super.onMouseDown(evt, mousePos)
-        this.fixMeEvt(evt, mousePos)
     }
 
     onMouseUp(evt: MouseEvent, mousePos: VectorI) {
         super.onMouseUp(evt, mousePos)
         if (!this.wasIMoved) this.selectEvt(evt, mousePos)
         this.wasIMoved = false
-        gameCanvas().setCursor('default')
+        gameCanvas.setCursor('default')
     }
 
     snap(): 'center' | 'corner' | undefined { return 'center' }
@@ -284,22 +286,83 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
 }
 
 export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
-    constructor(
-        k: elementType, 
-        custom: GroundDataI,
-        w?: number,
-        h?: number
-    ) { super(k, custom, w ? w : 0, h ? h : 0) }
+    oldW = 0
 
-    creationType(): 'one-point' | 'two-point' { return 'two-point' }
-    snap(): 'center' | 'corner' | undefined { return 'corner' }
+    constructor(
+        custom: GroundDataI,
+        pos: VectorI
+    ) {
+        super('ground', custom, pos, 1, 1, [
+            {
+                key: 'left-corner',
+                parentKey: 'move body',
+                shape: 'circle',
+                snap: true,
+                lockedAxis: 'x',
+                size: 10,
+                paint: {
+                    fillColor: 'yellow',
+                    strokeColor: 'red',
+                },
+                pos: V.zero()
+            },
+            {
+                key: 'right-corner',
+                parentKey: 'move body',
+                shape: 'circle',
+                snap: true,
+                lockedAxis: 'x',
+                size: 10,
+                paint: {
+                    fillColor: 'yellow',
+                    strokeColor: 'red',
+                },
+                pos: V.zero()
+            }
+        ])
+    }
+
+    getCPPos(key: string) {
+        if (key === 'left-corner') return this.g().pos
+        else if (key === 'right-corner') return V.add(this.g().pos, V.vec(this.g().width, 0))
+        else return super.getCPPos(key)
+    }
+
+    setCPPos(cp: VectorI, key: string) {
+        super.setCPPos(cp, key)
+        if (key === 'left-corner') this.data.geo.pos = cp
+    }
+
+    selectPoint(key: string) {
+        super.selectPoint(key)
+        console.log(key + ' selected')
+        this.oldW = this.g().width
+    }
+
+    movedCPPos(
+        newMousePos: VectorI, 
+        oldMousePos: VectorI,
+        cpn: ControlPointI
+    ) {
+        if (cpn.key === 'left-corner' || cpn.key === 'right-corner') {
+            const d = V.delta(oldMousePos, newMousePos)
+            const res = gameCanvas.snapPos(V.add(cpn.isMovingPos!, d), 'grid-point')
+            this.data.geo.width = this.oldW + (res.x - cpn.isMovingPos!.x) * (cpn.key === 'left-corner' ? -1 : 1)
+        }
+        return super.movedCPPos(newMousePos, oldMousePos, cpn)
+    }
+
+    paint(g: CanvasRenderingContext2D) {
+        this.paintAllCPs(g)
+        super.paint(g)
+    }
 }
 
 export const editorTemplates: {
     title: string,
     items: {
         name: string,
-        templ: (cs: number) => any
+        templ: (pos: VectorI) => EditorObject
     }[]
 }[] = [
     {
@@ -307,16 +370,16 @@ export const editorTemplates: {
         items: [
             {
                 name: 'Stern',
-                templ: (cs) => new EditorObjectGeneric<ScoreDataI>(
-                    'score', { type: 'star' },
-                    0.5*cs, 0.5*cs
+                templ: (pos: VectorI) => new EditorObjectGeneric<ScoreDataI>(
+                    'score', { type: 'star' }, pos,
+                    1,1
                 )
             },
             {
                 name: 'Münze',
-                templ: (cs) => new EditorObjectGeneric<ScoreDataI>(
-                    'score', { type: 'coin' },
-                    0.5*cs, 0.5*cs
+                templ: (pos: VectorI) => new EditorObjectGeneric<ScoreDataI>(
+                    'score', { type: 'coin' }, pos,
+                    1,1
                 )
             },
         ]
@@ -326,16 +389,16 @@ export const editorTemplates: {
         items: [
             {
                 name: 'Start',
-                templ: (cs) => new EditorObjectGeneric<StartEndDataI>(
-                    'start-end', { type: 'start' },
-                    0.5*cs, 0.5*cs
+                templ: (pos: VectorI) => new EditorObjectGeneric<StartEndDataI>(
+                    'start-end', { type: 'start' }, pos,
+                    1,1
                 )
             },
             {
                 name: 'Ziel',
-                templ: (cs) => new EditorObjectGeneric<StartEndDataI>(
-                    'start-end', { type: 'end' },
-                    0.5*cs, 0.5*cs
+                templ: (pos: VectorI) => new EditorObjectGeneric<StartEndDataI>(
+                    'start-end', { type: 'end' }, pos,
+                    1,1
                 )
             },
         ]
@@ -345,21 +408,21 @@ export const editorTemplates: {
         items: [
             {
                 name: 'Normaler Boden',
-                templ: (cs) => new GroundEditorObject(
-                    'ground', {}
+                templ: (pos: VectorI) => new GroundEditorObject(
+                    {}, pos
                 )
             },
             {
                 name: 'Roter Boden',
-                templ: (cs) => new GroundEditorObject(
-                    'ground', {
+                templ: (pos: VectorI) => new GroundEditorObject(
+                    {
                         dangerousEdges: {
                             top: true,
                             left: true,
                             bottom: true,
                             right: true
                         }
-                    }
+                    }, pos
                 )
             }
         ]
@@ -422,7 +485,7 @@ export abstract class EditorObjectAbstract implements EditorObject {
     }
 
     snapPos(v: VectorI, divides?: boolean, center?: boolean) {
-        const s = gameCanvas().data.cellSize / (divides === true ? gameCanvas().data.cellDivides : 1) 
+        const s = gameCanvas.data.cellSize / (divides === true ? gameCanvas.data.cellDivides : 1) 
         return V.add(V.mul(V.trunc(V.mul(v, 1/s)), s), center === true ? { x: s/2, y: -s/2 } : V.zero())
     }
 
@@ -655,7 +718,7 @@ export class EditorObjectGeneric<T> extends EditorObjectAbstract {
         if (!this.params.fix && evt.button === 0) {
             if (this.creationType() === 'one-point') {
                 this.setGeoData({ pos: mousePos })
-                gameCanvas().fixAddingElement()
+                gameCanvas.fixAddingElement()
                 this.params.fix = true
             }
             else {
@@ -664,7 +727,7 @@ export class EditorObjectGeneric<T> extends EditorObjectAbstract {
                     this.fixingStep1 = undefined
                 }
                 else {
-                    gameCanvas().fixAddingElement()
+                    gameCanvas.fixAddingElement()
                     this.params.fix = true
                 }
             }
@@ -703,7 +766,7 @@ export class EditorObjectGeneric<T> extends EditorObjectAbstract {
 
     selectEvt(evt: MouseEvent, mousePos: VectorI) {
         if (this.includesPoint(mousePos) && this.params.fix)
-            gameCanvas().select(this)
+            gameCanvas.select(this)
     }
 
     getCPPos(key: string) {
@@ -716,7 +779,7 @@ export class EditorObjectGeneric<T> extends EditorObjectAbstract {
     }
 
     movedCPPos(nmp: VectorI, omp: VectorI, ocpp: VectorI, key: ControlPointI) {
-        if (!this.wasIMoved) gameCanvas().setCursor('move')
+        if (!this.wasIMoved) gameCanvas.setCursor('move')
         this.wasIMoved = true
         return super.movedCPPos(nmp, omp, ocpp, key)
     }
@@ -749,7 +812,7 @@ export class EditorObjectGeneric<T> extends EditorObjectAbstract {
         this.amITouched = undefined
         this.wasIMoved = false
         this.snapPoint = undefined
-        gameCanvas().setCursor('default')
+        gameCanvas.setCursor('default')
     }
 
     creationType(): 'one-point' | 'two-point' { return 'one-point' }

@@ -4,9 +4,11 @@ import ex from "excalibur";
 import React from "react";
 import { ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
 import { modulo, V } from "../../adds";
-import { EditorObject, EditorObjectGeneric, GroundEditorObject } from "./objects/object";
+import { EditorObject, EditorObjectGeneric, editorTemplates, GroundEditorObject } from "./objects/object";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
+import { image } from '../../images';
+import { GameCanvas } from '../../../game/canvas';
 
 interface GameEditorStateI {
     cWidth: number,
@@ -19,7 +21,7 @@ interface GameEditorPropsI {
 }
 
 export let gameEditor: GameEditor
-export function gameCanvas() { return gameEditor!.gameCanvas! }
+export let gameCanvas: GameEditorCanvas
 
 export class GameEditor extends React.Component<GameEditorPropsI, GameEditorStateI> {
     private canvas: HTMLCanvasElement | null = null
@@ -104,6 +106,8 @@ export class GameEditorCanvas {
         this.canvas = gc
         this.setCursor = sc
 
+        gameCanvas = this
+
         this.canvas.onmousedown = e => {
             this.setCanvasCursor(e)
 
@@ -118,7 +122,15 @@ export class GameEditorCanvas {
                 this.setCursor('move')
             }
 
-            this.allElements().forEach(o => o.onMouseDown(e, this.cursor))
+            if (this.buttonsPressed[0]) {
+                if (this.addingType) {
+                    this.fixAddingElement()
+                    editor.setAddingType()
+                    console.log(this.elements)
+                }
+            }
+
+            this.elements.forEach(o => o.onMouseDown(e, this.cursor))
             
             this.paint()
         }
@@ -131,7 +143,7 @@ export class GameEditorCanvas {
             }
             this.setCursor('default')
 
-            this.allElements().forEach(o => o.onMouseUp(e, this.cursor))
+            this.elements.forEach(o => o.onMouseUp(e, this.cursor))
 
             this.paint()
         }
@@ -142,7 +154,7 @@ export class GameEditorCanvas {
             if (this.buttonsPressed[1])
                 this.eye = V.add(this.oldEye, V.delta({x:m.clientX, y:m.clientY}, this.diffPoint))
 
-            this.allElements().forEach(o => o.onMouseMove(m, this.buttonsPos, this.cursor))
+            this.elements.forEach(o => o.onMouseMove(m, this.buttonsPos, this.cursor))
 
             this.paint()
         }
@@ -151,37 +163,37 @@ export class GameEditorCanvas {
             this.zoom(e.deltaY * (-0.0005))
         }
 
-        this.eye.y = this.canvas.height/2
-        this.eye.x = this.canvas.width/2
+        this.eye.y = -200
+        this.eye.x = -200
 
-        this.elements.push(new EditorObjectGeneric<ScoreDataI>(
-            'score', { type: 'star' },
-            40, 40, true
+        this.elements.push(new GroundEditorObject(
+            {}, V.vec(1,1)
         ))
+
         this.select(this.elements[0])
 
         this.paint()
     }
 
-    dividedCellSize() {
-        return this.data.cellSize / this.data.cellDivides
-    }
+    snapPos(v: VectorI, type?: 'grid-point' | 'field-corner' | 'field-center') {
+        const t = type ? type : 'field-corner'
+        let res = V.zero()
 
-    snapPos(v: VectorI, divides?: boolean, center?: boolean) {
-        const s = this.data.cellSize / (divides === true ? this.data.cellDivides : 1) 
-        return V.add(V.mul(V.trunc(V.mul(v, 1/s)), s), center === true ? { x: s/2, y: -s/2 } : V.zero())
-    }
+        if (t === 'field-center' || t === 'field-corner') 
+            res = V.add(V.trunc(v), t === 'field-center' ? V.vec(0.5, -0.5) : V.zero())
+        else 
+            res = V.trunc(V.mul(V.subToNull(V.trunc(V.mul(v, 2)), V.square(-1)), 1/2))
 
-    snapToGrid(v: VectorI, divides: boolean) {
-        const cellSize = divides ? this.dividedCellSize() : this.data.cellSize
-        return this.snapPos(V.add(v, V.mul({x: cellSize, y: -cellSize}, 0.5)), divides)
+        return res 
     }
 
     allElements() { return this.addingType ? [ ...this.elements, this.addingType ] : this.elements }
 
     fixAddingElement() {
         if (this.addingType) {
-            this.elements.push(this.addingType)
+            const item = editorTemplates.find(et => et.title === this.addingType![0])!
+                .items.find(i => i.name === this.addingType![1])!
+            this.elements.push(item.templ(this.snapPos(this.cursor, 'field-corner')))
             this.addingType = undefined
         }
     }
@@ -211,7 +223,7 @@ export class GameEditorCanvas {
     zoom(s: number, center?: VectorI) {
         const diff = s * this.scaling
         const middle = this.worldCoords({x:this.canvas.width/2, y:this.canvas.height/2})
-        this.eye = V.add(this.eye, V.mulVec(center ? this.cursor : middle, {x:diff, y:-diff}))
+        this.eye = V.add(this.eye, V.mul(V.mulVec(center ? this.cursor : middle, {x:diff, y:-diff}), this.data.cellSize))
         this.setScaling(diff + this.scaling)
     }
 
@@ -224,10 +236,13 @@ export class GameEditorCanvas {
 
     worldCoords(v: VectorI) { return V.mulVec(
         V.add(v, this.eye),
-        { x: 1/this.scaling, y: -1/this.scaling }
+        V.mul(V.vec(1/this.scaling, -1/this.scaling), 1/this.data.cellSize)
     ) }
+
+    mcs(v: VectorI) { return V.mul(v, this.data.cellSize) }
+
     setCanvasCursor(m: MouseEvent) { this.cursor = this.worldCoords({x:m.clientX, y:m.clientY}) }
-    setAddingElement(o: EditorObject) { this.addingType = o }
+    setAddingElement(o: [string, string]) { this.addingType = o }
 
     paint() {
         const g = this.canvas.getContext('2d')!
@@ -240,12 +255,26 @@ export class GameEditorCanvas {
 
         g.translate(-this.eye.x, -this.eye.y)
         g.scale(this.scaling, -this.scaling)
+
+        this.paintAdding(g)
+        
         g.fillStyle = 'red'
         g.fillRect(0, 0, 20, 20)
+        
         this.elements.forEach(e => e.paint(g))
-        this.addingType?.paint(g)
 
         g.restore()
+    }
+
+    paintAdding(g: CanvasRenderingContext2D) {
+        if (this.addingType) {
+            g.fillStyle = 'rgba(255, 200, 100, 0.5)'
+            const p = this.mcs(this.snapPos(this.cursor, 'field-corner'))
+            g.fillRect(p.x, p.y, this.data.cellSize, this.data.cellSize)
+            const size = V.square(20)
+            const pc = V.addAll([p, this.mcs(V.vec(0.5,-0.5)), V.mulVec(size, V.vec(-0.5,0.5))])
+            g.drawImage(image('plus')!, pc.x, pc.y, size.x, size.y)
+        }
     }
 
     paintMarks(g: CanvasRenderingContext2D) {
