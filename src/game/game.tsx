@@ -80,7 +80,8 @@ export class ReactGame extends React.Component {
                     creator: '',
                     globalGravity: 0.2,
                     cellSize: 40,
-                    cellDivides: 1
+                    cellDivides: 1,
+                    height: 50
                 },
                 obj: {
                     grounds: []

@@ -19,7 +19,10 @@ export class Ground extends GeoActor {
             width: box.w,
             height: box.h
         })
-        this.settings = s ? s : {}
+        this.settings = s ? s : {
+            vertical: false,
+            width: 1
+        }
     }
 
     setup() {
@@ -56,7 +59,7 @@ export class Ground extends GeoActor {
         let rb = new ex.Vector(this.width,this.height)
         let rt = new ex.Vector(this.width,0)
 
-        if (s.dangerousEdges) {
+        /*if (s.dangerousEdges) {
             const t = s.dangerousEdges.top ? 1 : 0
             const l = s.dangerousEdges.left ? 1 : 0
             const b = s.dangerousEdges.bottom ? 1 : 0
@@ -67,7 +70,7 @@ export class Ground extends GeoActor {
             lb = lt.add(new Vector(-l * ts,  b * ts))
             rb = lt.add(new Vector( r * ts,  b * ts))
             rt = lt.add(new Vector( r * ts, -t * ts))
-        }
+        }*/
         
         return new ex.PolygonCollider({
             points: [ lt, lb, rb, rt ]

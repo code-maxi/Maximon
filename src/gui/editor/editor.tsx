@@ -60,7 +60,8 @@ export class Editor extends React.Component<{}, {
                 creator: '',
                 globalGravity: 4,
                 cellSize: 50,
-                cellDivides: 1
+                cellDivides: 1,
+                height: 50
             }} />
             <div id="game-settings">
                 <div className="tab-p">

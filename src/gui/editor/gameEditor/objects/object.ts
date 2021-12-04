@@ -35,11 +35,13 @@ export interface ControlPointI {
         fillColor?: string
         strokeColor?: string
         icon?: string
-        shadow?: [ string, number ]
+        shadow?: [ string, number ],
+        size?: number
     }
+    allowOutOfRange?: boolean
     snap?: boolean
     active?: boolean
-    isMovingPos?: VectorI
+    oldMovingPos?: VectorI
     selfPaint?: (g: CanvasRenderingContext2D, c: ControlPointI, cPos: VectorI) => void
     includesPoint?: (c: ControlPointI, mouse: VectorI) => boolean
 }
@@ -73,7 +75,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         this.controlPoints.map(cp => cp.key === key ? { ...cp, pos: vec } : cp)
     }
 
-    movingCP() { return this.controlPoints.find(cp => cp.isMovingPos !== undefined) }
+    movingCP() { return this.controlPoints.find(cp => cp.oldMovingPos !== undefined) }
 
     movedCPPos(
         newMousePos: VectorI, 
@@ -83,7 +85,8 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         let d = V.delta(oldMousePos, newMousePos)
         if (cpn.lockedAxis === 'x') d = V.mulVec(d, { x:1, y:0 })
         if (cpn.lockedAxis === 'y') d = V.mulVec(d, { x:0, y:1 })
-        const res = V.add(cpn.isMovingPos!, d)
+        let res = V.add(cpn.oldMovingPos!, d)
+        if (cpn.allowOutOfRange !== true) res = gameCanvas.inRange(res)
         return cpn.snap ? d = gameCanvas.snapPos(res, 'grid-point') : res
     }
 
@@ -100,7 +103,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
 
     selectPoint(selected: string) {
         this.controlPoints = this.controlPoints.map(
-            cp => selected && cp.key === selected ? { ...cp, isMovingPos: this.getCPPos(cp.key) } : cp)
+            cp => selected && cp.key === selected ? { ...cp, oldMovingPos: this.getCPPos(cp.key) } : cp)
     }
 
     onMouseDown(evt: MouseEvent, mousePos: VectorI) {
@@ -129,7 +132,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     }
 
     onMouseUp(_evt: MouseEvent, _mousePos: VectorI) {
-        this.controlPoints = this.controlPoints.map(cp => ({ ...cp, isMovingPos: undefined }))
+        this.controlPoints = this.controlPoints.map(cp => ({ ...cp, oldMovingPos: undefined }))
     }
 
     paintOneCP(g: CanvasRenderingContext2D, cp: ControlPointI) {
@@ -137,7 +140,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
 
         if (cp.active === true) {
             if (cp.selfPaint) cp.selfPaint(g, cp, pos)
-            else if (cp.paint && cp.size) {
+            else if (cp.paint && cp.paint.size) {
                 const transp = 'rgba(0,0,0)'
                 g.strokeStyle = cp.paint.strokeColor ? cp.paint.strokeColor : transp
                 g.fillStyle = cp.paint.fillColor ? cp.paint.fillColor : transp
@@ -146,10 +149,10 @@ export abstract class EditorObjectControlPoints implements EditorObject {
 
                 const pos2 = gameCanvas.mcs(pos)
 
-                if (cp.shape === 'circle') g.arc(pos2.x, pos2.y, cp.size, 0, Math.PI*2)
+                if (cp.shape === 'circle') g.arc(pos2.x, pos2.y, cp.paint.size, 0, Math.PI*2)
                 if (cp.shape === 'rect') {
                     const mt = (x: number, y: number, f?: boolean) => {
-                        const p = V.add(pos2, V.mulVec(V.square(cp.size!), V.vec(x,y)))
+                        const p = V.add(pos2, V.mulVec(V.square(cp.paint!.size!), V.vec(x,y)))
                         if (f === true) g.moveTo(p.x, p.y)
                         else g.lineTo(p.x, p.y)
                     }
@@ -227,7 +230,7 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
         this.g().pos.y = v.y
     }
 
-    paint(g: CanvasRenderingContext2D) {
+    paintSelf(g: CanvasRenderingContext2D) {
         g.fillStyle = 'rgba(50, 150, 255, 0.5)'
         g.fillRect(
             this.gPosP().x, 
@@ -235,6 +238,10 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
             this.gWP(),
             this.gHP()
         )
+    }
+
+    paint(g: CanvasRenderingContext2D) {
+        this.paintSelf(g)
         if (this.params.selected) this.paintBordersAround(g)
     }
 
@@ -253,7 +260,8 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     }
 
     onSelect(b: boolean) {
-        this.controlPoints.map(cp => ({ ...cp, active: b }))
+        this.controlPoints = this.controlPoints.map(cp => ({ ...cp, active: b }))
+        console.log(this.controlPoints)
     }
 
     getCPPos(key: string) {
@@ -294,49 +302,79 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     ) {
         super('ground', custom, pos, 1, 1, [
             {
-                key: 'left-corner',
+                key: 'st-corner',
                 parentKey: 'move body',
                 shape: 'circle',
                 snap: true,
                 lockedAxis: 'x',
-                size: 10,
+                size: 15,
                 paint: {
                     fillColor: 'yellow',
                     strokeColor: 'red',
+                    size: 9
                 },
                 pos: V.zero()
             },
             {
-                key: 'right-corner',
+                key: 'nd-corner',
                 parentKey: 'move body',
                 shape: 'circle',
                 snap: true,
                 lockedAxis: 'x',
-                size: 10,
+                size: 15,
                 paint: {
                     fillColor: 'yellow',
                     strokeColor: 'red',
+                    size: 9
                 },
                 pos: V.zero()
             }
         ])
+        this.updateCP()
     }
 
     getCPPos(key: string) {
-        if (key === 'left-corner') return this.g().pos
-        else if (key === 'right-corner') return V.add(this.g().pos, V.vec(this.g().width, 0))
+        const w = this.data.custom.width
+        if (key === 'st-corner') return this.g().pos
+        else if (key === 'nd-corner') return V.add(
+            this.g().pos,
+            V.vec(this.data.custom.vertical ? 0 : w, this.data.custom.vertical ? w : 0)
+        )
         else return super.getCPPos(key)
     }
 
     setCPPos(cp: VectorI, key: string) {
         super.setCPPos(cp, key)
-        if (key === 'left-corner') this.data.geo.pos = cp
+        if (key === 'st-corner') this.data.geo.pos = cp
     }
 
     selectPoint(key: string) {
         super.selectPoint(key)
-        console.log(key + ' selected')
-        this.oldW = this.g().width
+        this.oldW = this.data.custom.width
+    }
+
+    size() {
+        return V.vec(
+            this.data.custom.vertical ? 1 : this.data.custom.width, 
+            this.data.custom.vertical ? this.data.custom.width : 1
+        )
+    }
+    updateSize() {
+        const size = this.size()
+        this.data.geo.width = size.x
+        this.data.geo.height = size.y
+    }
+
+    setData(d: any) {
+        super.setData({ ...d, width: this.data.custom.width })
+        this.updateCP()
+        this.updateSize()
+    }
+
+    updateCP() {
+        this.controlPoints = this.controlPoints.map(
+            cp => cp.key === 'st-corner' || cp.key === 'nd-corner' ? { ...cp, lockedAxis: this.data.custom.vertical ? 'y' : 'x' } : cp)
+        this.updateSize()
     }
 
     movedCPPos(
@@ -344,17 +382,26 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
         oldMousePos: VectorI,
         cpn: ControlPointI
     ) {
-        if (cpn.key === 'left-corner' || cpn.key === 'right-corner') {
+        if (cpn.key === 'st-corner' || cpn.key === 'nd-corner') {
+            const v = this.data.custom.vertical
             const d = V.delta(oldMousePos, newMousePos)
-            const res = gameCanvas.snapPos(V.add(cpn.isMovingPos!, d), 'grid-point')
-            this.data.geo.width = this.oldW + (res.x - cpn.isMovingPos!.x) * (cpn.key === 'left-corner' ? -1 : 1)
+            const res = gameCanvas.snapPos(V.add(cpn.oldMovingPos!, d), 'grid-point')
+            const direc = (a: VectorI) => v ? a.y : a.x
+            let diff = (direc(res)) - direc(cpn.oldMovingPos!)
+            this.data.custom.width = this.oldW + diff * (cpn.key === 'st-corner' ? -1 : 1)
+            if (this.data.custom.width < 1) this.data.custom.width = 1
+            this.updateSize()
+            if (cpn.key === 'st-corner') {
+                this.data.geo.pos = res
+            }
         }
         return super.movedCPPos(newMousePos, oldMousePos, cpn)
     }
 
     paint(g: CanvasRenderingContext2D) {
+        this.paintSelf(g)
+        if (this.params.selected) this.paintBordersAround(g)
         this.paintAllCPs(g)
-        super.paint(g)
     }
 }
 
@@ -409,13 +456,18 @@ export const editorTemplates: {
             {
                 name: 'Normaler Boden',
                 templ: (pos: VectorI) => new GroundEditorObject(
-                    {}, pos
+                    {
+                        vertical: false,
+                        width: 1
+                    }, pos
                 )
             },
             {
                 name: 'Roter Boden',
                 templ: (pos: VectorI) => new GroundEditorObject(
                     {
+                        vertical: false,
+                        width: 1,
                         dangerousEdges: {
                             top: true,
                             left: true,

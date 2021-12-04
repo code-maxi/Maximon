@@ -1,0 +1,8 @@
+- [ ] Editor – Coordsyst. scale y=1
+- [ ] Graphic.Creative – corners size
+- [x] Editor.Ground – Ground min width
+- [x] Editor.Ground – allow vertical direc
+- [x] Editor.Ground – remove cp during selecting
+- [x] Editor – Borders
+- [ ] GUI – Lock Add-List button
+- [ ] GUI – Release Add-List Item

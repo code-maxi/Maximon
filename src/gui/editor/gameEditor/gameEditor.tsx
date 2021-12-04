@@ -167,7 +167,7 @@ export class GameEditorCanvas {
         this.eye.x = -200
 
         this.elements.push(new GroundEditorObject(
-            {}, V.vec(1,1)
+            { vertical: true, width: 1 }, V.vec(1,1)
         ))
 
         this.select(this.elements[0])
@@ -193,26 +193,34 @@ export class GameEditorCanvas {
         if (this.addingType) {
             const item = editorTemplates.find(et => et.title === this.addingType![0])!
                 .items.find(i => i.name === this.addingType![1])!
-            this.elements.push(item.templ(this.snapPos(this.cursor, 'field-corner')))
+            this.elements.push(item.templ(this.inRange(this.snapPos(this.cursor, 'field-corner'))))
             this.addingType = undefined
         }
     }
 
     updateSelected(d: any) {
+        console.log('update data')
+        console.log(d)
+        console.log()
         this.selectedElement?.setData(d)
         this.paint()
     }
 
     select(o: EditorObject) {
-        if (this.selectedElement && this.selectedElement !== o) this.selectedElement.params.selected = false
+        if (this.selectedElement && this.selectedElement !== o) {
+            this.selectedElement.params.selected = false
+            this.selectedElement.onSelect(false)
+        }
         
         if (this.selectedElement === o) {
             this.selectedElement.params.selected = false
+            this.selectedElement.onSelect(false)
             this.selectedElement = undefined
         }
         else {
             this.selectedElement = o
             this.selectedElement.params.selected = true
+            this.selectedElement.onSelect(true)
         }
 
         editor.setES(this.selectedElement?.getData(), true, false)
@@ -223,7 +231,7 @@ export class GameEditorCanvas {
     zoom(s: number, center?: VectorI) {
         const diff = s * this.scaling
         const middle = this.worldCoords({x:this.canvas.width/2, y:this.canvas.height/2})
-        this.eye = V.add(this.eye, V.mul(V.mulVec(center ? this.cursor : middle, {x:diff, y:-diff}), this.data.cellSize))
+        this.eye = V.add(this.eye, V.mul(V.mulVec(center ? this.cursor : middle, this.dVec(diff)), this.data.cellSize))
         this.setScaling(diff + this.scaling)
     }
 
@@ -236,13 +244,15 @@ export class GameEditorCanvas {
 
     worldCoords(v: VectorI) { return V.mulVec(
         V.add(v, this.eye),
-        V.mul(V.vec(1/this.scaling, -1/this.scaling), 1/this.data.cellSize)
+        this.dVec(1/this.data.cellSize/this.scaling)
     ) }
 
     mcs(v: VectorI) { return V.mul(v, this.data.cellSize) }
 
     setCanvasCursor(m: MouseEvent) { this.cursor = this.worldCoords({x:m.clientX, y:m.clientY}) }
     setAddingElement(o: [string, string]) { this.addingType = o }
+
+    dVec(s?: number) { return V.mul(V.vec(1,1), s ? s : 1) }
 
     paint() {
         const g = this.canvas.getContext('2d')!
@@ -254,22 +264,86 @@ export class GameEditorCanvas {
         if (this.paintGrid) this.paintMarks(g)
 
         g.translate(-this.eye.x, -this.eye.y)
-        g.scale(this.scaling, -this.scaling)
+        g.scale(this.scaling, this.scaling)
+
+        this.paintBorder(g)
 
         this.paintAdding(g)
         
         g.fillStyle = 'red'
         g.fillRect(0, 0, 20, 20)
+
+        g.fillStyle = 'green'
+        g.fillRect(this.cursor.x*this.data.cellSize, this.cursor.y*this.data.cellSize, 10, 10)
         
         this.elements.forEach(e => e.paint(g))
 
         g.restore()
     }
 
+    inRange(vec: VectorI) {
+        let v = vec
+        if (v.x < 0) v.x = 0
+        if (v.y < 0) v.y = 0
+        if (v.y > this.data.height) v.y = this.data.height
+        return v
+    }
+
+    paintBorder(g: CanvasRenderingContext2D) {
+        const zeroScreen = this.mcs(this.worldCoords(V.zero()))
+        const zeroWorld = V.zero()
+        const leftBottom = this.mcs(V.vec(0, this.data.height))
+        const xend = this.mcs(this.worldCoords(V.vec(this.canvas.width, 0))).x
+        const yend = this.mcs(this.worldCoords(V.vec(0, this.canvas.height))).y
+        const drawLine = (p1: VectorI, p2: VectorI) => {
+            g.strokeStyle = 'red'
+            g.lineWidth = 5
+            g.beginPath()
+            g.moveTo(p1.x, p1.y)
+            g.lineTo(p2.x, p2.y)
+            g.stroke()
+        }
+        if (zeroScreen.y < 0) {
+            const diff = Math.abs(zeroScreen.y)
+            g.fillRect(
+                zeroScreen.x, 
+                zeroScreen.y, 
+                xend - zeroScreen.x,
+                diff
+            )
+            drawLine(zeroWorld, V.vec(xend, zeroWorld.y))
+        }
+
+        if (zeroScreen.x < 0) {
+            const diff = Math.abs(zeroScreen.x)
+            g.fillRect(
+                zeroScreen.x, 
+                zeroScreen.y, 
+                diff,
+                yend - zeroScreen.y
+            )
+            drawLine(zeroWorld, V.vec(zeroWorld.x, leftBottom.y))
+        }
+
+        if (yend > leftBottom.y) {
+            const diff = Math.abs(leftBottom.y - yend)
+            g.fillRect(
+                zeroScreen.x, 
+                leftBottom.y, 
+                xend - zeroScreen.x,
+                diff
+            )
+            drawLine(
+                V.vec(zeroWorld.x, leftBottom.y), 
+                V.vec(xend - zeroScreen.x, leftBottom.y)
+            )
+        }
+    }
+
     paintAdding(g: CanvasRenderingContext2D) {
         if (this.addingType) {
             g.fillStyle = 'rgba(255, 200, 100, 0.5)'
-            const p = this.mcs(this.snapPos(this.cursor, 'field-corner'))
+            const p = this.mcs(this.inRange(this.snapPos(this.cursor, 'field-corner')))
             g.fillRect(p.x, p.y, this.data.cellSize, this.data.cellSize)
             const size = V.square(20)
             const pc = V.addAll([p, this.mcs(V.vec(0.5,-0.5)), V.mulVec(size, V.vec(-0.5,0.5))])
@@ -282,7 +356,7 @@ export class GameEditorCanvas {
         const dy = modulo(-this.eye.y, cellSize * this.scaling)
 
         g.strokeStyle = 'rgba(0, 0, 0, 0.3)'
-        g.lineWidth = 1
+        g.lineWidth = this.scaling < 1/5 ? 0.3 : 0.7
         g.beginPath()
 
         const line = (p1: VectorI, p2: VectorI) => {

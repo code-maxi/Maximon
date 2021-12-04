@@ -80,6 +80,8 @@ export const V = {
     distance(a: VectorI, b: VectorI) { return this.length(this.delta(a,b)) },
     equals(a: VectorI, b: VectorI) { return a.x === b.x && a.y == b.y },
     add(a: VectorI, b: VectorI): VectorI { return { x: a.x + b.x, y: a.y + b.y } },
+    addX(a: VectorI, s: number) { return this.add(a, this.vec(s,0)) },
+    addY(a: VectorI, s: number) { return this.add(a, this.vec(0,s)) },
     addAll(v: VectorI[]) {
         let sum = this.zero()
         v.forEach(i => sum = this.add(sum, i))
@@ -106,7 +108,8 @@ export const V = {
     includesPoint(point: VectorI, pos: VectorI, size: VectorI) {
         const pos2 = this.add(pos, size)
         return point.x >= pos.x && point.y >= pos.y && point.x <= pos2.x && point.y <= pos2.y
-    }
+    },
+    smallestCoord(a: VectorI) { return a.x < a.y ? a.x : a.y }
 }
 
 export const Arr = {
@@ -127,7 +130,9 @@ export const Creative = {
         g.beginPath()
 
         const corner = (p1: VectorI, p2: VectorI, p3: VectorI) => {
-            const cs = padding ? padding(size.x + size.y) : (size.x + size.y)/200 * 10 + 5
+            const lc = V.smallestCoord(size)
+            let cs = padding ? padding(size.x + size.y) : (size.x + size.y)/200 * 10 + 5
+            if (cs > lc * 0.4) cs = lc * 0.4
             const padd = 3
             const p = V.add(
                 V.add(

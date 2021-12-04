@@ -138,20 +138,21 @@ export function ElementSettings(p: {
         if (p.item.type === 'ground') {
             const c = p.item as GeoActorI<GroundDataI>
              i = <React.Fragment>
-                { speechBuble() }
-                <ListItem>
-                    <ListItemText>Breite</ListItemText>
-                    <NumberInput value={ c.geo.width } onChange={ v => p.onESUpdate({
-                        ...p.item,
-                        width: v
-                    } as GroundDataI) } />
-                </ListItem>
-                <ListItem>
-                   <ListItemText>Höhe</ListItemText>
-                    <NumberInput value={ c.geo.height } onChange={ v => p.onESUpdate({
-                        ...p.item,
-                        height: v
-                    } as GroundDataI) } />
+                <ListItem secondaryAction={
+                    <Checkbox
+                        checked={sCollapse}
+                        onChange={ (e: React.ChangeEvent<HTMLInputElement>) => {
+                            p.onESUpdate({
+                                ...c,
+                                custom: {
+                                    ...c.custom,
+                                    vertical: e.target.checked
+                                }
+                            })
+                            setSCollapse(!sCollapse)
+                    } } />
+                }>
+                    <ListItemText>Vertikal</ListItemText>
                 </ListItem>
                 <ListSubheader>Rote Dreiecke</ListSubheader>
                 <ListItem>

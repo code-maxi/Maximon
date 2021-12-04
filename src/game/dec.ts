@@ -40,6 +40,8 @@ export interface GeoDataI {
 
 export interface GroundDataI {
     speechBuble?: string,
+    width: number,
+    vertical: boolean,
     dangerousEdges?: {
         top: boolean,
         left: boolean,
@@ -66,7 +68,8 @@ export interface SzeneDataOptI {
     creator: string,
     globalGravity: number,
     cellSize: number,
-    cellDivides: number
+    cellDivides: number,
+    height: number
 }
 
 export interface SzeneDataObjI {
