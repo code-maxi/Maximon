@@ -21,6 +21,7 @@ export class Ground extends GeoActor {
         })
         this.settings = s ? s : {
             vertical: false,
+            groundType: 'none',
             width: 1
         }
     }
@@ -43,7 +44,7 @@ export class Ground extends GeoActor {
                 g.fillRect(0, 0, u, u)
                 g.strokeStyle = 'white'
                 g.strokeRect(0, 0, u, u)
-                if (x === 0 && this.settings.dangerousEdges?.top === false) {
+                if (x === 0 && this.settings.groundType !== 'barrier') {
                     g.fillStyle = 'green'
                     g.fillRect(0,0 - u/3, u, u/3)
                 }

@@ -1,9 +1,9 @@
 import { chainPropTypes } from "@mui/utils"
 import { Vector } from "excalibur"
-import { elementType, GeoActorI, GroundDataI, ScoreDataI, StartEndDataI, VectorI } from "../../../../game/dec"
-import { Creative, snapType, V } from "../../../adds"
+import { elementType, fullElementName, GeoActorI, GroundDataI, ScoreDataI, StartEndDataI, VectorI } from "../../../../game/dec"
+import { Creative, directionT, snapType, V } from "../../../adds"
 import { cellSize } from "../../editor"
-import { gameCanvas, gameEditor } from "../gameEditor"
+import { EditorTooltipI, gameCanvas, gameEditor } from "../gameEditor"
 
 export interface EditorObjectParams {
     key: elementType,
@@ -21,22 +21,29 @@ export interface EditorObject {
     onMouseMove(evt: MouseEvent, buttonPos: (VectorI|undefined)[], mousePos: VectorI): void
     onMouseUp(evt: MouseEvent, mousePos: VectorI): void
     onSelect(b: boolean): void
+    shiftPos(s: number): void
 }
 
 export interface ControlPointI {
-    pos: VectorI,
-    key: string,
-    size?: number,
+    pos: VectorI
+    key: string
+    size?: number
     lockedAxis?: 'x' | 'y'
     zIndex?: number
     shape: 'rect' | 'circle'
     parentKey?: string
+    hoverTooltip?: {
+        tooltip: EditorTooltipI,
+        align: directionT
+    }
+    hovered?: boolean
     paint?: {
         fillColor?: string
         strokeColor?: string
         icon?: string
         shadow?: [ string, number ],
-        size?: number
+        size?: number,
+        hoverText?: string
     }
     allowOutOfRange?: boolean
     snap?: boolean
@@ -53,11 +60,12 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     abstract paint(g: CanvasRenderingContext2D): void
     abstract includesPoint(v: VectorI): boolean
     abstract onSelect(b: boolean): void
+    abstract shiftPos(s: number): void
     
     controlPoints: ControlPointI[]
 
     constructor(cpt: ControlPointI[]) {
-        this.controlPoints = cpt.map(e => ({ ...e, pos: V.zero(), active: true, zIndex: e.zIndex ? e.zIndex : 0 }))
+        this.controlPoints = cpt.map(e => ({ ...e, pos: V.zero(), zIndex: e.zIndex ? e.zIndex : 0, hovered: false }))
     }
         
     // Control Points
@@ -129,6 +137,14 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     ) {
         const lm = buttonPos[0]
         if (lm) this.updateControlPoints(mousePos, lm)
+        else {
+            gameCanvas.clearTooltips()
+            this.controlPoints.forEach(cp => {
+                if (cp.active === true && cp.hoverTooltip && this.controlPointIncluded(cp, mousePos)) {
+                    gameCanvas.setTooltip(cp.hoverTooltip.align, cp.hoverTooltip.tooltip)
+                }
+            })
+        }
     }
 
     onMouseUp(_evt: MouseEvent, _mousePos: VectorI) {
@@ -197,9 +213,17 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
             {
                 key: 'move body',
                 shape: 'rect',
+                active: true,
                 snap: true,
                 zIndex: -1,
                 pos: V.zero(),
+                hoverTooltip: {
+                    align: 'right',
+                    tooltip: {
+                        text: 'Move/Select Object',
+                        style: {}
+                    }
+                },
                 includesPoint: (_, m) => this.includesPoint(m)
             }
         ])
@@ -218,6 +242,7 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
         }
     }
 
+    custom() { return this.data.custom }
     g() { return this.data.geo }
     gPosP() { return gameCanvas.mcs(this.g().pos) }
     gWP() { return this.g().width * gameCanvas.data.cellSize }
@@ -225,19 +250,20 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     getData() { return this.data }
     setData(d: GeoActorI<T>) { this.data = d }
 
+    shiftPos(s: number) {
+        this.data.geo.pos.y += s
+    }
+
     moveTo(v: VectorI) {
         this.g().pos.x = v.x
         this.g().pos.y = v.y
     }
 
     paintSelf(g: CanvasRenderingContext2D) {
-        g.fillStyle = 'rgba(50, 150, 255, 0.5)'
-        g.fillRect(
-            this.gPosP().x, 
-            this.gPosP().y, 
-            this.gWP(),
-            this.gHP()
-        )
+        g.fillStyle = 'rgba(21, 154, 255, 0.5)'
+        g.lineWidth = 3
+        Creative.paintRoundedRectangle(g, this.gPosP().x, this.gPosP().y, this.gWP(), this.gHP(), 20)
+        g.fill()
     }
 
     paint(g: CanvasRenderingContext2D) {
@@ -249,7 +275,7 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
         Creative.paintBordersAround(
             g, this.gPosP(), 
             V.vec(this.gWP(), this.gHP()),
-            strokeStyle
+            strokeStyle, 7
         )
     }
 
@@ -260,8 +286,6 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     }
 
     onSelect(b: boolean) {
-        this.controlPoints = this.controlPoints.map(cp => ({ ...cp, active: b }))
-        console.log(this.controlPoints)
     }
 
     getCPPos(key: string) {
@@ -275,7 +299,7 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
 
     movedCPPos(nmp: VectorI, omp: VectorI, key: ControlPointI) {
         if (!this.wasIMoved) gameCanvas.setCursor('move')
-        this.wasIMoved = true
+        if (V.distance(omp, nmp) > 0.5) this.wasIMoved = true
         return super.movedCPPos(nmp, omp, key)
     }
 
@@ -307,12 +331,24 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
                 shape: 'circle',
                 snap: true,
                 lockedAxis: 'x',
-                size: 15,
+                size: 12,
+                hoverTooltip: {
+                    align: 'right',
+                    tooltip: {
+                        text: 'Größe Verändern',
+                        style: {
+                            backgroundColor: 'rgba(200, 150, 0, 0.4)',
+                            textColor: 'black'
+                        }
+                    }
+                },
                 paint: {
                     fillColor: 'yellow',
                     strokeColor: 'red',
-                    size: 9
+                    size: 6,
+                    hoverText: 'Verändere Größe'
                 },
+                active: false,
                 pos: V.zero()
             },
             {
@@ -321,12 +357,24 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
                 shape: 'circle',
                 snap: true,
                 lockedAxis: 'x',
-                size: 15,
+                hoverTooltip: {
+                    align: 'right',
+                    tooltip: {
+                        text: 'Größe Verändern',
+                        style: {
+                            backgroundColor: 'rgba(200, 150, 0, 0.4)',
+                            textColor: 'black'
+                        }
+                    }
+                },
+                size: 12,
                 paint: {
                     fillColor: 'yellow',
                     strokeColor: 'red',
-                    size: 9
+                    size: 6,
+                    hoverText: 'Verändere Größe'
                 },
+                active: false,
                 pos: V.zero()
             }
         ])
@@ -334,12 +382,15 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     }
 
     getCPPos(key: string) {
-        const w = this.data.custom.width
         if (key === 'st-corner') return this.g().pos
-        else if (key === 'nd-corner') return V.add(
-            this.g().pos,
-            V.vec(this.data.custom.vertical ? 0 : w, this.data.custom.vertical ? w : 0)
-        )
+        else if (key === 'nd-corner') {
+            const s = this.size()
+            const c = this.custom().vertical
+            return V.add(
+                this.g().pos,
+                V.vec(c ? 0 : s.x, c ? s.y : 0)
+            )
+        }
         else return super.getCPPos(key)
     }
 
@@ -350,13 +401,17 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
 
     selectPoint(key: string) {
         super.selectPoint(key)
-        this.oldW = this.data.custom.width
+        this.oldW = this.custom().width
+    }
+    onSelect(b: boolean) {
+        this.controlPoints = this.controlPoints.map(cp => cp.key === 'st-corner' || cp.key === 'nd-corner' ? { ...cp, active: b } : cp)
+        console.log(this.controlPoints)
     }
 
-    size() {
+    size(n?: number) {
         return V.vec(
-            this.data.custom.vertical ? 1 : this.data.custom.width, 
-            this.data.custom.vertical ? this.data.custom.width : 1
+            this.custom().vertical ? (n ? n : 1) : this.custom().width, 
+            this.custom().vertical ? this.custom().width : (this.custom().elevated === true ? 1/3 : 1) * (n ? n : 1)
         )
     }
     updateSize() {
@@ -366,14 +421,15 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     }
 
     setData(d: any) {
-        super.setData({ ...d, width: this.data.custom.width })
+        super.setData({ ...d, width: this.custom().width })
         this.updateCP()
         this.updateSize()
+        console.log(d)
     }
 
     updateCP() {
         this.controlPoints = this.controlPoints.map(
-            cp => cp.key === 'st-corner' || cp.key === 'nd-corner' ? { ...cp, lockedAxis: this.data.custom.vertical ? 'y' : 'x' } : cp)
+            cp => cp.key === 'st-corner' || cp.key === 'nd-corner' ? { ...cp, lockedAxis: this.custom().vertical ? 'y' : 'x' } : cp)
         this.updateSize()
     }
 
@@ -383,13 +439,13 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
         cpn: ControlPointI
     ) {
         if (cpn.key === 'st-corner' || cpn.key === 'nd-corner') {
-            const v = this.data.custom.vertical
+            const v = this.custom().vertical
             const d = V.delta(oldMousePos, newMousePos)
             const res = gameCanvas.snapPos(V.add(cpn.oldMovingPos!, d), 'grid-point')
             const direc = (a: VectorI) => v ? a.y : a.x
             let diff = (direc(res)) - direc(cpn.oldMovingPos!)
             this.data.custom.width = this.oldW + diff * (cpn.key === 'st-corner' ? -1 : 1)
-            if (this.data.custom.width < 1) this.data.custom.width = 1
+            if (this.custom().width < 1) this.data.custom.width = 1
             this.updateSize()
             if (cpn.key === 'st-corner') {
                 this.data.geo.pos = res
@@ -399,7 +455,39 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     }
 
     paint(g: CanvasRenderingContext2D) {
-        this.paintSelf(g)
+        const sbn = <T>(s:T,b:T,n:T) => this.custom().groundType === 'ice' ? s : (this.custom().groundType === 'barrier' ? b : n)
+        g.fillStyle = sbn('rgba(50, 170, 230, 0.5)', 'rgba(240, 80, 0, 0.5)', 'rgba(147, 78, 0, 0.5)')
+        g.strokeStyle = sbn('rgba(50, 170, 230, 1)', 'rgba(240, 80, 0, 1)', 'rgba(147, 78, 0, 1)')
+        g.lineWidth = 2
+        Creative.paintRoundedRectangle(g, this.gPosP().x, this.gPosP().y, this.gWP(), this.gHP(), 8)
+        g.fill()
+        g.stroke()
+
+        g.setLineDash([4,7])
+        g.lineCap = 'round'
+
+        if (this.custom().groundType === 'grass') {
+            g.lineWidth = 6
+            g.strokeStyle = 'rgb(64, 140, 13)'
+            g.beginPath()
+            const inset = 8
+            const p1 = V.add(this.gPosP(), V.vec(inset/2, -inset))
+            const p2 = V.add(V.addX(this.gPosP(), this.gWP()), V.vec(-inset/2, -inset))
+            g.moveTo(p1.x, p1.y)
+            g.lineTo(p2.x, p2.y)
+            g.stroke()
+        }
+        if (this.custom().groundType === 'barrier') {
+            g.lineWidth = 3
+            g.strokeStyle = 'rgb(200, 0, 0)'
+            const padding = 5
+            const pos2 = V.add(this.gPosP(), V.square(-padding))
+            const size2 = V.add(V.vec(this.gWP(), this.gHP()), V.square(padding*2))
+            Creative.paintRoundedRectangle(g, pos2.x, pos2.y, size2.x, size2.y, 8)
+            g.stroke()
+        }
+
+        g.setLineDash([0])
         if (this.params.selected) this.paintBordersAround(g)
         this.paintAllCPs(g)
     }
@@ -454,26 +542,62 @@ export const editorTemplates: {
         title: 'Böden',
         items: [
             {
-                name: 'Normaler Boden',
+                name: 'Schlichter Boden',
                 templ: (pos: VectorI) => new GroundEditorObject(
                     {
                         vertical: false,
-                        width: 1
+                        width: 2,
+                        groundType: 'none'
                     }, pos
                 )
             },
             {
-                name: 'Roter Boden',
+                name: 'Boden mit Gras',
+                templ: (pos: VectorI) => new GroundEditorObject(
+                    {
+                        vertical: false,
+                        width: 2,
+                        groundType: 'grass'
+                    }, pos
+                )
+            },
+            {
+                name: 'Hochgestellter Boden mit Gras',
                 templ: (pos: VectorI) => new GroundEditorObject(
                     {
                         vertical: false,
                         width: 1,
-                        dangerousEdges: {
-                            top: true,
-                            left: true,
-                            bottom: true,
-                            right: true
-                        }
+                        groundType: 'grass',
+                        elevated: true
+                    }, pos
+                )
+            },
+            {
+                name: 'Schlichter, vertikaler Boden',
+                templ: (pos: VectorI) => new GroundEditorObject(
+                    {
+                        vertical: true,
+                        width: 2,
+                        groundType: 'none'
+                    }, pos
+                )
+            },
+            {
+                name: 'Vereister Boden',
+                templ: (pos: VectorI) => new GroundEditorObject(
+                    {   
+                        vertical: false,
+                        width: 2,
+                        groundType: 'ice'
+                    }, pos
+                )
+            },{
+                name: 'Hindernis-Boden',
+                templ: (pos: VectorI) => new GroundEditorObject(
+                    {   
+                        vertical: false,
+                        width: 1,
+                        groundType: 'barrier'
                     }, pos
                 )
             }

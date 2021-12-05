@@ -6,7 +6,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { TabPanel } from "../adds";
 import { ElementDrawer } from "./drawer/drawer";
-import { elementType, GroundDataI } from '../../game/dec';
+import { elementType, GroundDataI, SzeneDataOptI } from '../../game/dec';
 import { ReactGame } from '../../game/game';
 import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
 import { editorTemplates } from './gameEditor/objects/object';
@@ -20,9 +20,19 @@ export class Editor extends React.Component<{}, {
     addSelectedItem?: [string,string],
     mode: number,
     tab: number,
-    selectedItem?: any
+    selectedItem?: any,
+
 }> {
     elementSettings?: any
+    gameSettings: SzeneDataOptI = {
+        name: '',
+        difficulty: 2,
+        creator: '',
+        globalGravity: 4,
+        cellSize: 50,
+        cellDivides: 1,
+        height: 20
+    }
 
     constructor(p: any) {
         super(p)
@@ -54,15 +64,7 @@ export class Editor extends React.Component<{}, {
 
     render() {
         return <div id="editor">
-            <GameEditor startData={{
-                name: '',
-                difficulty: 2,
-                creator: '',
-                globalGravity: 4,
-                cellSize: 50,
-                cellDivides: 1,
-                height: 50
-            }} />
+            <GameEditor startData={this.gameSettings} />
             <div id="game-settings">
                 <div className="tab-p">
                     <div className="tab-p-h">
@@ -76,7 +78,7 @@ export class Editor extends React.Component<{}, {
                         </Tabs>
                     </div>
                     <TabPanel value={1} index={this.state.tab}>
-                        <SettingsDrawer onSave={ () => {} } />
+                        <SettingsDrawer onGameSettingsChange={gs => gameCanvas.updateSettings(gs)} gameSettings={this.gameSettings} onSave={ () => {} } />
                     </TabPanel>
                     <TabPanel value={2} index={this.state.tab}>
                          <ElementDrawer

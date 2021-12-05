@@ -1,8 +1,13 @@
-- [ ] Editor – Coordsyst. scale y=1
-- [ ] Graphic.Creative – corners size
+- [x] Editor – Coordsyst. scale y=1
+- [x] Graphic.Creative – corners size
 - [x] Editor.Ground – Ground min width
 - [x] Editor.Ground – allow vertical direc
 - [x] Editor.Ground – remove cp during selecting
+- [ ] Editor.Ground – better painting
 - [x] Editor – Borders
+- [x] GUI – Game Settings
+- [x] GUI – Add Templates
+- [x] GUI – Remove Element
+- [ ] Editor – Command Points
 - [ ] GUI – Lock Add-List button
 - [ ] GUI – Release Add-List Item

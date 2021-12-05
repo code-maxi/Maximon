@@ -38,16 +38,22 @@ export interface GeoDataI {
     pos: VectorI
 }
 
+export type groundTypeI = 'none' | 'grass' | 'barrier' | 'ice'
+export function textGroundType(gt: groundTypeI) {
+    let t = ''
+    if (gt === 'none') t = 'Nichts'
+    if (gt === 'grass') t = 'Gras'
+    if (gt === 'barrier') t = 'Hindernis'
+    if (gt === 'ice') t = 'Eis'
+    return t
+}
+
 export interface GroundDataI {
     speechBuble?: string,
     width: number,
     vertical: boolean,
-    dangerousEdges?: {
-        top: boolean,
-        left: boolean,
-        bottom: boolean, 
-        right: boolean
-    }
+    groundType: groundTypeI,
+    elevated?: boolean
 }
 
 export interface StartEndDataI {

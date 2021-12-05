@@ -1,5 +1,6 @@
 import { Button, ButtonGroup, Checkbox, Divider, FormControlLabel, List, ListItem, ListItemText, ListSubheader, Slider, TextField, Typography } from "@mui/material";
 import React from "react";
+import { SzeneDataOptI } from "../../../game/dec";
 
 export interface StandartSettings {
     name: string,
@@ -15,12 +16,11 @@ let ss: StandartSettings = {
     schwierigkeit: 5,
     creator: ""
 }
-let gs: GameSettings = {
-    gravity: 3
-}
 
 export function SettingsDrawer(p: {
-    onSave: (s?: StandartSettings) => void
+    onSave: (s?: StandartSettings) => void,
+    onGameSettingsChange: (gs: SzeneDataOptI) => void,
+    gameSettings: SzeneDataOptI
 }) {
     return <div id="settings">
             <ButtonGroup className="p-buttons">
@@ -64,14 +64,18 @@ export function SettingsDrawer(p: {
             <List>
                 <ListSubheader>Spiel-Einstellungen</ListSubheader>
                 <ListItem>
-                    <ListItemText>Schwerekraft</ListItemText>
+                    <ListItemText>Höhe des Spiels</ListItemText>
                     <Slider
                         className="s-li"
-                        min={1}
-                        max={10}
-                        defaultValue={gs.gravity}
-                        step={null}
-                        onChange={(t, e) => { gs.gravity = e as number }} />
+                        min={15} 
+                        max={100} 
+                        defaultValue={ss.schwierigkeit} 
+                        step={1} 
+                        valueLabelDisplay="auto" 
+                        onChange={(t, e) => p.onGameSettingsChange({
+                            ...p.gameSettings,
+                            height: e as number
+                        })} />
                 </ListItem>
             </List>
 

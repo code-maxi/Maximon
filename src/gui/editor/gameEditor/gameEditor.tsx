@@ -3,7 +3,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ex from "excalibur";
 import React from "react";
 import { ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
-import { modulo, V } from "../../adds";
+import { Creative, directionT, modulo, TextBorderStyleI, V } from "../../adds";
 import { EditorObject, EditorObjectGeneric, editorTemplates, GroundEditorObject } from "./objects/object";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
@@ -76,7 +76,10 @@ export class GameEditor extends React.Component<GameEditorPropsI, GameEditorStat
     }
 }
 
-
+export interface EditorTooltipI {
+    text: string,
+    style: TextBorderStyleI
+}
 
 export class GameEditorCanvas {
     canvas: HTMLCanvasElement
@@ -99,6 +102,13 @@ export class GameEditorCanvas {
     setCursor: (c: string) => void
 
     paintGrid = true
+    
+    toolTips: {
+        top?: EditorTooltipI,
+        left?: EditorTooltipI,
+        right?: EditorTooltipI,
+        bottom?: EditorTooltipI, 
+    } = {}
     
 
     constructor(gc: HTMLCanvasElement, data: SzeneDataOptI, sc: (c: string) => void) {
@@ -167,11 +177,35 @@ export class GameEditorCanvas {
         this.eye.x = -200
 
         this.elements.push(new GroundEditorObject(
-            { vertical: true, width: 1 }, V.vec(1,1)
+            { vertical: true, groundType: 'grass', width: 1 }, V.vec(1,1)
         ))
 
         this.select(this.elements[0])
 
+        this.paint()
+    }
+
+    setTooltip(d: directionT, tooltip?: EditorTooltipI) {
+        this.toolTips[d] = tooltip
+        this.paint()
+    }
+    clearTooltips() {
+        // cleat all tooltips
+        this.setTooltip('top')
+        this.setTooltip('left')
+        this.setTooltip('bottom')
+        this.setTooltip('right')
+    }
+
+    updateSettings(s: SzeneDataOptI) {
+        if (this.data.height !== s.height) {
+            console.log('other height')
+            this.eye.y += (s.height - this.data.height)
+            this.elements.forEach(e => {
+                e.shiftPos(s.height - this.data.height)
+            })
+        }
+        this.data = s
         this.paint()
     }
 
@@ -228,6 +262,15 @@ export class GameEditorCanvas {
         this.paint()
     }
 
+    removeSelected() {
+        if (this.selectedElement) {
+            const se = this.selectedElement
+            if (se.params.selected) this.select(se)
+            this.elements = this.elements.filter(el => el !== se)
+            this.paint()
+        }
+    }
+
     zoom(s: number, center?: VectorI) {
         const diff = s * this.scaling
         const middle = this.worldCoords({x:this.canvas.width/2, y:this.canvas.height/2})
@@ -242,10 +285,15 @@ export class GameEditorCanvas {
 
     getScaling() { return this.scaling }
 
-    worldCoords(v: VectorI) { return V.mulVec(
-        V.add(v, this.eye),
-        this.dVec(1/this.data.cellSize/this.scaling)
-    ) }
+    worldCoords(v: VectorI) { 
+        return V.mulVec(
+            V.add(v, this.eye),
+            this.dVec(1/this.data.cellSize/this.scaling)
+        ) 
+    }
+    screenCoords(v: VectorI) {
+        return V.sub(V.divVec(v, this.dVec(1/this.data.cellSize/this.scaling)), this.eye)
+    }
 
     mcs(v: VectorI) { return V.mul(v, this.data.cellSize) }
 
@@ -266,19 +314,13 @@ export class GameEditorCanvas {
         g.translate(-this.eye.x, -this.eye.y)
         g.scale(this.scaling, this.scaling)
 
+        this.paintAdding(g)
+        this.elements.forEach(e => e.paint(g))
         this.paintBorder(g)
 
-        this.paintAdding(g)
-        
-        g.fillStyle = 'red'
-        g.fillRect(0, 0, 20, 20)
-
-        g.fillStyle = 'green'
-        g.fillRect(this.cursor.x*this.data.cellSize, this.cursor.y*this.data.cellSize, 10, 10)
-        
-        this.elements.forEach(e => e.paint(g))
-
         g.restore()
+
+        this.paintTooltips(g)
     }
 
     inRange(vec: VectorI) {
@@ -289,15 +331,35 @@ export class GameEditorCanvas {
         return v
     }
 
+    paintTooltips(g: CanvasRenderingContext2D) {
+        const pt = (o: directionT) => {
+            const item = this.toolTips[o]
+            if (item) {
+                Creative.strokeTextBorder(g, {
+                    text: item.text,
+                    pos: this.screenCoords(this.cursor),
+                    align: o,
+                    distance: 5
+                }, item.style)
+            }
+        }
+        pt('top')
+        pt('left')
+        pt('right')
+        pt('bottom')
+    }
+
     paintBorder(g: CanvasRenderingContext2D) {
         const zeroScreen = this.mcs(this.worldCoords(V.zero()))
         const zeroWorld = V.zero()
         const leftBottom = this.mcs(V.vec(0, this.data.height))
         const xend = this.mcs(this.worldCoords(V.vec(this.canvas.width, 0))).x
         const yend = this.mcs(this.worldCoords(V.vec(0, this.canvas.height))).y
+
+        g.fillStyle = 'white'
         const drawLine = (p1: VectorI, p2: VectorI) => {
             g.strokeStyle = 'red'
-            g.lineWidth = 5
+            g.lineWidth = 3
             g.beginPath()
             g.moveTo(p1.x, p1.y)
             g.lineTo(p2.x, p2.y)
@@ -350,6 +412,8 @@ export class GameEditorCanvas {
             g.drawImage(image('plus')!, pc.x, pc.y, size.x, size.y)
         }
     }
+
+
 
     paintMarks(g: CanvasRenderingContext2D) {
         const dx = modulo(-this.eye.x, cellSize * this.scaling)

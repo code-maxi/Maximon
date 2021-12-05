@@ -3,12 +3,13 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { Alert, Button, ButtonGroup, Checkbox, Collapse, Divider, IconButton, List, ListItem, ListItemButton, ListItemText, ListSubheader, Slider, TextField, Typography } from "@mui/material";
 import React from "react";
-import { elementType, fullElementName, GroundDataI, GameActorI, GeoActorI } from "../../../game/dec";
+import { elementType, fullElementName, GroundDataI, GameActorI, GeoActorI, groundTypeI, textGroundType } from "../../../game/dec";
 import { Arr, NumberInput } from "../../adds";
 import { editorTemplates } from '../gameEditor/objects/object';
 import { game } from '../../../game/game';
-import { gameEditor } from '../gameEditor/gameEditor';
+import { gameCanvas, gameEditor } from '../gameEditor/gameEditor';
 import { cellSize } from '../editor';
+import { isTemplateExpression } from 'typescript';
 
 export function ElementDrawer(p: {
     onAddSelect: (e: [string, string]) => void,
@@ -137,28 +138,7 @@ export function ElementSettings(p: {
 
         if (p.item.type === 'ground') {
             const c = p.item as GeoActorI<GroundDataI>
-             i = <React.Fragment>
-                <ListItem secondaryAction={
-                    <Checkbox
-                        checked={sCollapse}
-                        onChange={ (e: React.ChangeEvent<HTMLInputElement>) => {
-                            p.onESUpdate({
-                                ...c,
-                                custom: {
-                                    ...c.custom,
-                                    vertical: e.target.checked
-                                }
-                            })
-                            setSCollapse(!sCollapse)
-                    } } />
-                }>
-                    <ListItemText>Vertikal</ListItemText>
-                </ListItem>
-                <ListSubheader>Rote Dreiecke</ListSubheader>
-                <ListItem>
-                   
-                </ListItem>
-             </React.Fragment>
+            i = <GroundDataModify item={c} onChange={s => p.onESUpdate(s)} />
         }
 
         return i
@@ -168,7 +148,7 @@ export function ElementSettings(p: {
         <Typography className="my-title" variant="subtitle1">Element Einstellungen</Typography>
         <List>
             <ListItem secondaryAction={
-                <IconButton color="error"><DeleteRoundedIcon /></IconButton>
+                <IconButton color="error" onClick={ () => gameCanvas.removeSelected() }><DeleteRoundedIcon /></IconButton>
             }>
                 <ListItemText>Element entfernen?</ListItemText>
             </ListItem>
@@ -176,4 +156,71 @@ export function ElementSettings(p: {
             { p.item !== undefined ? elementSettings() : '' }
         </List>
     </div>
+}
+
+function GroundDataModify(p: {
+    item: GeoActorI<GroundDataI>,
+    onChange: (v: GeoActorI<GroundDataI>) => void
+}) {
+    const [gType, setGType] = React.useState(p.item.custom.groundType)
+    const [checkVertical, setCheckVertical] = React.useState(p.item.custom.vertical)
+    const [checkElevated, setCheckElevated] = React.useState(p.item.custom.elevated ? p.item.custom.elevated : false)
+    return <React.Fragment>
+        <ListItem>
+            <ButtonGroup>
+                {
+                    ([ 'none', 'grass', 'barrier', 'ice' ] as groundTypeI[]).map(m => 
+                            <Button 
+                                variant={ m === gType ? 'contained' : 'outlined' }
+                                onClick={ () => {
+                                    p.onChange({
+                                        ...p.item,
+                                        custom: {
+                                            ...p.item.custom,
+                                            groundType: m
+                                        }
+                                    })
+                                    setGType(m)
+                                } }
+                            >{textGroundType(m)}</Button>
+                        )
+                }
+            </ButtonGroup>
+        </ListItem>
+        <ListItem secondaryAction={
+            <Checkbox
+                checked={checkVertical}
+                onChange={ (e: React.ChangeEvent<HTMLInputElement>) => {
+                    p.onChange({
+                        ...p.item,
+                        custom: {
+                            ...p.item.custom,
+                            vertical: e.target.checked,
+                        }
+                    })
+                    setCheckVertical(!checkVertical)
+            } } />
+        }>
+            <ListItemText>Vertikal</ListItemText>
+        </ListItem>
+        <Collapse in={!checkVertical}>
+            <ListItem secondaryAction={
+                <Checkbox
+                    checked={checkElevated}
+                    onChange={ (e: React.ChangeEvent<HTMLInputElement>) => {
+                        p.onChange({
+                            ...p.item,
+                            custom: {
+                                ...p.item.custom,
+                                elevated: e.target.checked,
+                                vertical: false
+                            }
+                        })
+                        setCheckElevated(!checkElevated)
+                    } } />
+            }>
+                <ListItemText>Hochgestellt</ListItemText>
+            </ListItem>
+        </Collapse>
+    </React.Fragment>
 }

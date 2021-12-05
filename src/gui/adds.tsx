@@ -4,8 +4,10 @@ import { IconButton, TextField } from "@mui/material";
 import { Box } from "@mui/system";
 import React from 'react';
 import { VectorI } from '../game/dec';
+import { NumericLiteral } from 'typescript';
 
 export type snapType = 'none' | 'big' | 'small'
+export type directionT = 'top' | 'left' | 'bottom' | 'right'
 
 export interface TabPanelProps {
     children?: React.ReactNode
@@ -73,6 +75,8 @@ export function objToArr<T>(o: any): T[] {
 export const V = {
     zero(): VectorI { return {x:0,y:0} },
     mul(a: VectorI, s: number): VectorI { return { x: a.x*s, y: a.y*s } },
+    muX(a: VectorI, s: number): VectorI { return { x: a.x*s, y: a.y } },
+    muY(a: VectorI, s: number): VectorI { return { x: a.x, y: a.y*s } },
     mulVec(a: VectorI, b: VectorI): VectorI { return { x: a.x*b.x, y: a.y*b.y } },
     divVec(a: VectorI, b: VectorI): VectorI { return { x: a.x/b.x, y: a.y/b.y } },
     delta(a: VectorI, b: VectorI): VectorI { return { x: b.x-a.x, y: b.y-a.y } },
@@ -109,11 +113,30 @@ export const V = {
         const pos2 = this.add(pos, size)
         return point.x >= pos.x && point.y >= pos.y && point.x <= pos2.x && point.y <= pos2.y
     },
+    direction(d: directionT) {
+        let res = V.zero()
+        if (d === 'top') res = V.vec(0,-1)
+        if (d === 'left') res = V.vec(-1,0)
+        if (d === 'bottom') res = V.vec(0,1)
+        if (d === 'right') res = V.vec(1,0)
+        return res
+    },
     smallestCoord(a: VectorI) { return a.x < a.y ? a.x : a.y }
 }
 
 export const Arr = {
     equal<T>(a: T[], b?: T[]) { return b && JSON.stringify(a) === JSON.stringify(b) }
+}
+
+export interface TextBorderStyleI {
+    textColor?: string,
+    backgroundColor?: string,
+    padding?: number,
+    roundSize?: number,
+    font?: {
+        size: number,
+        style: number
+    }
 }
 
 export const Creative = {
@@ -122,7 +145,8 @@ export const Creative = {
         pos: VectorI,
         size: VectorI,
         strokeStyle?: string,
-        padding?: (s: number) => number
+        padding?: number,
+        cellSize?: (s: number) => number
     ) {
         g.strokeStyle = strokeStyle ? strokeStyle : 'red'
         g.lineWidth = 3
@@ -131,9 +155,9 @@ export const Creative = {
 
         const corner = (p1: VectorI, p2: VectorI, p3: VectorI) => {
             const lc = V.smallestCoord(size)
-            let cs = padding ? padding(size.x + size.y) : (size.x + size.y)/200 * 10 + 5
+            let cs = cellSize ? cellSize(size.x + size.y) : (size.x + size.y)/200 * 10 + 5
             if (cs > lc * 0.4) cs = lc * 0.4
-            const padd = 3
+            const padd = padding ? padding : 3
             const p = V.add(
                 V.add(
                     V.mulVec(p2, { x:size.x + 2*padd, y:size.y + 2*padd }),
@@ -171,6 +195,97 @@ export const Creative = {
         )
 
         g.stroke()
+    },
+    paintRoundedRectangle(
+        g: CanvasRenderingContext2D, 
+        x: number, y: number, 
+        w: number, h: number, 
+        r: number
+    ) {
+        if (w < 2 * r) r = w / 2
+        if (h < 2 * r) r = h / 2
+        g.beginPath()
+        g.moveTo(x+r, y)
+        g.arcTo(x+w, y,   x+w, y+h, r)
+        g.arcTo(x+w, y+h, x,   y+h, r)
+        g.arcTo(x,   y+h, x,   y,   r)
+        g.arcTo(x,   y,   x+w, y,   r)
+        g.closePath()
+    },
+    strokeTextBorder(
+        g: CanvasRenderingContext2D,
+        settings: {
+            text: string,
+            pos: VectorI,
+            align: directionT,
+            distance: number
+        },
+        style: TextBorderStyleI
+    ) {
+        const defaultStyle = {
+            textColor: style.textColor ? style.textColor : 'white',
+            backgroundColor: style.backgroundColor ? style.backgroundColor : 'rgba(0,0,0, 0.4)',
+            padding: style.padding ? style.padding : 5,
+            roundSize: style.roundSize ? style.roundSize : 4,
+            font: {
+                size: style.font ? style.font.size : 14,
+                style: style.font ? style.font.style : 'sans-serif'
+            }
+        }
+
+        g.lineWidth = 1
+        g.textBaseline = 'top'
+        g.font = defaultStyle.font.size + 'px ' + defaultStyle.font.style
+
+        const m = g.measureText(settings.text)
+
+        const paddingV = V.vec(defaultStyle.padding * 2, defaultStyle.padding)
+        const size = V.add(
+            V.vec(m.width, defaultStyle.font.size), 
+            V.mul(paddingV, 2)
+        )
+
+        let shift = V.zero()
+        
+        if (settings.align === 'top') {
+            shift = V.vec(
+                -size.x/2,
+                -size.y - settings.distance
+            )
+        }
+        if (settings.align === 'left') {
+            shift = V.vec(
+                -size.x - settings.distance,
+                -size.y/2
+            )
+        }
+        if (settings.align === 'bottom') {
+            shift = V.vec(
+                -size.x/2,
+                settings.distance
+            )
+        }
+        if (settings.align === 'right') {
+            shift = V.vec(
+                settings.distance,
+                -size.y/2
+            )
+        }
+
+        const boxPos = V.add(settings.pos, shift)
+        const textPos = V.add(boxPos, paddingV)
+
+        g.fillStyle = defaultStyle.backgroundColor
+        this.paintRoundedRectangle(
+            g, 
+            boxPos.x, boxPos.y,
+            size.x, size.y,
+            defaultStyle.roundSize
+        )
+        g.fill()
+        
+        g.fillStyle = defaultStyle.textColor
+        g.fillText(settings.text, textPos.x, textPos.y)
     }
 }
 
