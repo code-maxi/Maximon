@@ -4,11 +4,13 @@ import ex from "excalibur";
 import React from "react";
 import { ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
 import { Creative, directionT, modulo, TextBorderStyleI, V } from "../../adds";
-import { EditorObject, EditorObjectGeneric, editorTemplates, GroundEditorObject } from "./objects/object";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
 import { image } from '../../images';
 import { GameCanvas } from '../../../game/canvas';
+import { editorTemplates } from './objects/object-templates';
+import { EditorObject } from './objects/object';
+import { GroundEditorObject } from './objects/things/ground';
 
 interface GameEditorStateI {
     cWidth: number,
@@ -74,6 +76,9 @@ export class GameEditor extends React.Component<GameEditorPropsI, GameEditorStat
         this.packSize()
         window.onresize = () => this.packSize()
     }
+    componentDidUpdate() {
+        this.gameCanvas?.paint()
+    }
 }
 
 export interface EditorTooltipI {
@@ -85,6 +90,7 @@ export class GameEditorCanvas {
     canvas: HTMLCanvasElement
 
     private cursor: VectorI = {x:0,y:0}
+    private screenCursor: VectorI = {x:0,y:0}
     private eye: VectorI = {x:0,y:0}
     private scaling = 1
     private oldEye = this.eye
@@ -136,7 +142,6 @@ export class GameEditorCanvas {
                 if (this.addingType) {
                     this.fixAddingElement()
                     editor.setAddingType()
-                    console.log(this.elements)
                 }
             }
 
@@ -164,6 +169,8 @@ export class GameEditorCanvas {
             if (this.buttonsPressed[1])
                 this.eye = V.add(this.oldEye, V.delta({x:m.clientX, y:m.clientY}, this.diffPoint))
 
+            this.toolTips.top = undefined
+            this.toolTips.right = undefined
             this.elements.forEach(o => o.onMouseMove(m, this.buttonsPos, this.cursor))
 
             this.paint()
@@ -177,12 +184,21 @@ export class GameEditorCanvas {
         this.eye.x = -200
 
         this.elements.push(new GroundEditorObject(
-            { vertical: true, groundType: 'grass', width: 1 }, V.vec(1,1)
+            { vertical: true, groundType: 'grass', width: 3 }, V.vec(1,1)
         ))
+        /*this.elements.push(new SawBladeEditorObject(
+            {   
+                radius: 2
+            }, V.vec(1,1)
+        ))*/
 
         this.select(this.elements[0])
 
         this.paint()
+    }
+
+    cellSize() {
+        return this.data.cellSize
     }
 
     setTooltip(d: directionT, tooltip?: EditorTooltipI) {
@@ -199,7 +215,6 @@ export class GameEditorCanvas {
 
     updateSettings(s: SzeneDataOptI) {
         if (this.data.height !== s.height) {
-            console.log('other height')
             this.eye.y += (s.height - this.data.height)
             this.elements.forEach(e => {
                 e.shiftPos(s.height - this.data.height)
@@ -229,6 +244,7 @@ export class GameEditorCanvas {
                 .items.find(i => i.name === this.addingType![1])!
             this.elements.push(item.templ(this.inRange(this.snapPos(this.cursor, 'field-corner'))))
             this.addingType = undefined
+            this.setTooltip('bottom')
         }
     }
 
@@ -236,7 +252,7 @@ export class GameEditorCanvas {
         console.log('update data')
         console.log(d)
         console.log()
-        this.selectedElement?.setData(d)
+        this.selectedElement?.setData(d, true)
         this.paint()
     }
 
@@ -297,8 +313,20 @@ export class GameEditorCanvas {
 
     mcs(v: VectorI) { return V.mul(v, this.data.cellSize) }
 
-    setCanvasCursor(m: MouseEvent) { this.cursor = this.worldCoords({x:m.clientX, y:m.clientY}) }
-    setAddingElement(o: [string, string]) { this.addingType = o }
+    setCanvasCursor(m: MouseEvent) {
+        this.screenCursor = V.vec(m.clientX, m.clientY)
+        this.cursor = this.worldCoords(this.screenCursor)
+    }
+    setAddingElement(o?: [string, string]) {
+        this.addingType = o
+        this.setTooltip('bottom', o ? {
+            text: 'Klicke, um hinzuzufügen.',
+            style: {
+                backgroundColor: 'rgba(230, 230, 50, 0.5)',
+                textColor: 'black'
+            }
+        } : undefined)
+    }
 
     dVec(s?: number) { return V.mul(V.vec(1,1), s ? s : 1) }
 
@@ -337,9 +365,9 @@ export class GameEditorCanvas {
             if (item) {
                 Creative.strokeTextBorder(g, {
                     text: item.text,
-                    pos: this.screenCoords(this.cursor),
+                    pos: this.screenCursor,
                     align: o,
-                    distance: 5
+                    distance: (o === 'bottom' ? 14 : 4) * this.scaling
                 }, item.style)
             }
         }

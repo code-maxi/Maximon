@@ -70,7 +70,7 @@ export function SettingsDrawer(p: {
                         min={15} 
                         max={100} 
                         defaultValue={ss.schwierigkeit} 
-                        step={1} 
+                        step={5} 
                         valueLabelDisplay="auto" 
                         onChange={(t, e) => p.onGameSettingsChange({
                             ...p.gameSettings,

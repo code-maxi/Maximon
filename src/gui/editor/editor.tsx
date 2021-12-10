@@ -9,7 +9,6 @@ import { ElementDrawer } from "./drawer/drawer";
 import { elementType, GroundDataI, SzeneDataOptI } from '../../game/dec';
 import { ReactGame } from '../../game/game';
 import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
-import { editorTemplates } from './gameEditor/objects/object';
 import { loadImages } from '../images';
 
 export const cellSize = 50
@@ -20,10 +19,8 @@ export class Editor extends React.Component<{}, {
     addSelectedItem?: [string,string],
     mode: number,
     tab: number,
-    selectedItem?: any,
-
+    selectedItem?: any
 }> {
-    elementSettings?: any
     gameSettings: SzeneDataOptI = {
         name: '',
         difficulty: 2,
@@ -42,17 +39,19 @@ export class Editor extends React.Component<{}, {
         }
         editor = this
         loadImages([
-            [ 'plus', 'images/plus.png' ]
+            { key: 'plus', path: 'images/editor/plus.png' },
+            { key: 'saw-blade', path: 'images/editor/elements/rundscheibe.png' },
+            { key: 'cp/zoom', path: 'images/editor/command-points/zoom.svg', color: 'white' },
+            { key: 'cp/speechbuble', path: 'images/editor/command-points/speechbuble.svg', color: 'white' },
+            { key: 'cp/gravity', path: 'images/editor/command-points/gravity.svg', color: 'white' }
         ], () => {})
     }
 
     setES(o: any, updateState?: boolean, updateGame?: boolean) {
-        this.elementSettings = o
-
-        if (updateGame === true) gameEditor.gameCanvas?.updateSelected(this.elementSettings)
+        if (updateGame === true) gameEditor.gameCanvas?.updateSelected(o)
         if (updateState === true) this.setState({
             ...this.state,
-            selectedItem: this.elementSettings
+            selectedItem: o
         })
     }
 

@@ -1,13 +1,16 @@
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
-import { IconButton, TextField } from "@mui/material";
+import { Button, ButtonGroup, IconButton, TextField } from "@mui/material";
 import { Box } from "@mui/system";
 import React from 'react';
 import { VectorI } from '../game/dec';
 import { NumericLiteral } from 'typescript';
 
-export type snapType = 'none' | 'big' | 'small'
+// Type Declarations
+
 export type directionT = 'top' | 'left' | 'bottom' | 'right'
+
+// GUI-Component-Adds
 
 export interface TabPanelProps {
     children?: React.ReactNode
@@ -25,6 +28,8 @@ export function TabPanel(props: TabPanelProps) {
         </div>
     );
 }
+
+export function def<T extends unknown>(d: T, t?: T): T { return t ? t : d }
 
 export function NumberInput(p: {
     value: number,
@@ -63,15 +68,39 @@ export function NumberInput(p: {
     </div>
 }
 
-export function objToArr<T>(o: any): T[] {
-    let arr: T[] = []
-    for (let key in o) {
-        try { arr.push(o[key] as T) }
-        catch { console.log('cast-err') }
-    }
-    return arr
+export function SwitchButtonGroup<T>(p: {
+    items: T[]
+    selectedItem?: T,
+    onChange: (s: T) => void,
+    convertText?: (s: T) => string,
+    className?: string,
+    color?: string
+}) {
+    return <ButtonGroup variant="outlined" className={p.className}>
+        {
+            p.items.map(i => 
+                <Button 
+                    color={ def('primary', p.color) as any } 
+                    variant={ i === p.selectedItem ? 'contained' : undefined } 
+                    onClick={() => p.onChange(i)} > 
+                { p.convertText ? p.convertText(i) : i } </Button>
+            )
+        }
+    </ButtonGroup>
 }
 
+
+
+// Math-Adds
+
+export function modulo(n1: number, n2: number) {
+    let nn = n1
+    while (nn < n2) nn += n2
+    while (nn > n2) nn -= n2
+    return nn
+}
+
+// Vector
 export const V = {
     zero(): VectorI { return {x:0,y:0} },
     mul(a: VectorI, s: number): VectorI { return { x: a.x*s, y: a.y*s } },
@@ -121,12 +150,25 @@ export const V = {
         if (d === 'right') res = V.vec(1,0)
         return res
     },
-    smallestCoord(a: VectorI) { return a.x < a.y ? a.x : a.y }
+    smallestCoord(a: VectorI) { return a.x < a.y ? a.x : a.y },
+    toString(a: VectorI) { return '(' + a.x + ' | ' + a.y + ')' }
 }
 
+// Array-Adds
+
 export const Arr = {
-    equal<T>(a: T[], b?: T[]) { return b && JSON.stringify(a) === JSON.stringify(b) }
+    equal<T>(a: T[], b?: T[]) { return b && JSON.stringify(a) === JSON.stringify(b) },
+    objToArr<T>(o: any): T[] {
+        let arr: T[] = []
+        for (let key in o) {
+            try { arr.push(o[key] as T) }
+            catch { console.log('cast-err') }
+        }
+        return arr
+    }
 }
+
+// Canvas-Adds
 
 export interface TextBorderStyleI {
     textColor?: string,
@@ -224,7 +266,7 @@ export const Creative = {
     ) {
         const defaultStyle = {
             textColor: style.textColor ? style.textColor : 'white',
-            backgroundColor: style.backgroundColor ? style.backgroundColor : 'rgba(0,0,0, 0.4)',
+            backgroundColor: style.backgroundColor ? style.backgroundColor : 'rgba(40,40,40, 0.6)',
             padding: style.padding ? style.padding : 5,
             roundSize: style.roundSize ? style.roundSize : 4,
             font: {
@@ -287,11 +329,4 @@ export const Creative = {
         g.fillStyle = defaultStyle.textColor
         g.fillText(settings.text, textPos.x, textPos.y)
     }
-}
-
-export function modulo(n1: number, n2: number) {
-    let nn = n1
-    while (nn < n2) nn += n2
-    while (nn > n2) nn -= n2
-    return nn
 }

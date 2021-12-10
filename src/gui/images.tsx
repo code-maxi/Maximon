@@ -1,3 +1,5 @@
+import { createNumericLiteral } from "typescript"
+
 let images: [string, HTMLImageElement][] = []
 
 let fl = 0
@@ -9,11 +11,23 @@ function loadImage(src: string, ol?: () => void) {
     return i
 }
 
-export function loadImages(a: [string, string][], f: () => void) {
-    a.forEach(i => images.push([i[0], loadImage(i[1], () => {
-        fl ++
-        if (fl === a.length) f()
-    })]))
+export function loadImages(a: {
+    key: string,
+    path: string,
+    color?: string
+}[], f: () => void) {
+    console.log('loading images...')
+    a.forEach(i => {
+        const image = loadImage(i.path, () => {
+            fl ++
+            if (fl === a.length) f()
+        })
+        if (i.color) image.setAttribute('style', 'color:' + i.color)
+        images.push([i.key, image])
+        console.log(image)
+        console.log(i)
+        console.log('------')
+    })
 }
 
 export function image(key: string) {

@@ -1,5 +1,5 @@
 import * as ex from "excalibur"
-import { objToArr } from "./gui/adds"
+import { Arr } from "./gui/adds"
 
 export const Resources = {
     grass: new ex.ImageSource('../res/images/grass.png'),
@@ -7,5 +7,5 @@ export const Resources = {
 }
 
 export function loader() {
-    return new ex.Loader(objToArr<ex.ImageSource>(Resources))
+    return new ex.Loader(Arr.objToArr<ex.ImageSource>(Resources))
 }

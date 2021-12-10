@@ -1,4 +1,4 @@
-export type elementType = 'start-end' | 'ground' | 'score'
+export type elementType = 'start-end' | 'ground' | 'score' | 'saw-blade'
 
 export interface VectorI {
     x: number
@@ -8,7 +8,7 @@ export interface VectorI {
 export function fullElementName(t: any) {
     let i = '[ERROR]'
     if (t.type === 'start-end') i = 'Spiel Start/Ende'
-    if (t.type === 'ground') i = 'Boden'
+    if (t.type === 'ground') i = 'Boden (Typ: ' + t.custom.groundType + ', Länge: ' + t.custom.width + (t.custom.vertical ? ', vertikal' : '') + ')'
     if (t.type === 'score') i = 'Score-Objekt'
     return i
 }
@@ -38,6 +38,17 @@ export interface GeoDataI {
     pos: VectorI
 }
 
+export interface GroundDataI {
+    width: number,
+    vertical: boolean,
+    elevated?: 't' | 'b',
+    groundType: groundTypeI
+}
+
+export interface SawBladeDataI {
+    radius: number
+}
+
 export type groundTypeI = 'none' | 'grass' | 'barrier' | 'ice'
 export function textGroundType(gt: groundTypeI) {
     let t = ''
@@ -46,14 +57,6 @@ export function textGroundType(gt: groundTypeI) {
     if (gt === 'barrier') t = 'Hindernis'
     if (gt === 'ice') t = 'Eis'
     return t
-}
-
-export interface GroundDataI {
-    speechBuble?: string,
-    width: number,
-    vertical: boolean,
-    groundType: groundTypeI,
-    elevated?: boolean
 }
 
 export interface StartEndDataI {
