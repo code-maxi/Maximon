@@ -15,9 +15,25 @@
 - [ ] GUI – Lock Add-List button
 - [ ] GUI – Release Add-List Item
 
+- [ ] Nur ein einziges Objekt ziehen
+- [ ] Element Name
+- [ ] Mouse-Events nur anwenden, wenn Objekt in Sicht
+
+- [ ] Command Points – Right Tooltip
+- [x] Command Points – Range
+- [ ] Command Points – Add not Snap
+- [ ] Z-Index
+
 /////////////
 
 Possible Commands:
 /jumper/set-speechbuble
 /jumper/set-gravity
 /camera/zoom
+
+Ideen:
+- Zerbrechbarer Boden
+- Aufzug
+
+- EditorObjectParams → Z-Index
+- Templates zusammenfassen

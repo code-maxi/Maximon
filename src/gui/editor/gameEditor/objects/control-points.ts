@@ -1,7 +1,7 @@
-import { VectorI } from "../../../../game/dec"
-import { directionT, V } from "../../../adds"
+import { geomShape, VectorI } from "../../../../game/dec"
+import { directionT, Vec } from "../../../adds"
 import { EditorTooltipI, gameCanvas } from "../gameEditor"
-import { EditorObject, EditorObjectParams } from "./object"
+import { EditorObjectI, EditorObjectParamsI } from "./element-templates"
 
 export interface ControlPointI {
     pos: VectorI
@@ -9,7 +9,7 @@ export interface ControlPointI {
     size?: number
     lockedAxis?: 'x' | 'y'
     zIndex?: number
-    shape: 'rect' | 'circle'
+    shape: geomShape,
     parentKey?: string
     hoverTooltip?: {
         tooltip: () => EditorTooltipI,
@@ -33,14 +33,23 @@ export interface ControlPointI {
     includesPoint?: (c: ControlPointI, mouse: VectorI) => boolean
 }
 
-export abstract class EditorObjectControlPoints implements EditorObject {
-    abstract params: EditorObjectParams
+export abstract class EditorObjectControlPoints implements EditorObjectI {
+    abstract params: EditorObjectParamsI
     abstract getData(): any
     abstract setData(d: any, fromGUI?: boolean): void
     abstract paint(g: CanvasRenderingContext2D): void
     abstract includesPoint(v: VectorI): boolean
     abstract onSelect(b: boolean): void
     abstract shiftPos(s: number): void
+    abstract isInView(pos: VectorI, size: VectorI): boolean
+
+    hovered = false
+    setHovered(b: boolean): void { this.hovered = b }
+
+    mcs(v: VectorI) { return gameCanvas.mcs(v) }
+    cellSize() { return gameCanvas.cellSize() }
+    canvasW() { return gameCanvas.canvas.width }
+    canvasH() { return gameCanvas.canvas.height }
     
     controlPoints: ControlPointI[] = []
 
@@ -59,7 +68,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         
     // Control Points
 
-    sortedCPs() { return this.controlPoints.sort((a,b) => (a.zIndex ? a.zIndex : 0) - (b.zIndex ? b.zIndex : 0)) }
+    sortedCPs() { return this.controlPoints.sort((a,b) => (b.zIndex ? b.zIndex : 0) - (a.zIndex ? a.zIndex : 0)) }
 
     getCP(key: string) { return this.controlPoints.find(c => c.key === key) }
     getCPPos(key: string): VectorI {
@@ -67,8 +76,8 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     }
     getCPPos2(key: string): VectorI { // With parenting
         const cp = this.getCP(key)!
-        const cpParentPos = cp.parentKey ? this.getCPPos2(cp.parentKey) : V.zero()
-        return V.add(cpParentPos, this.getCPPos(key))
+        const cpParentPos = cp.parentKey ? this.getCPPos2(cp.parentKey) : Vec.zero()
+        return Vec.add(cpParentPos, this.getCPPos(key))
     }
     setCPPos(vec: VectorI, key: string) {
         this.controlPoints.map(cp => cp.key === key ? { ...cp, pos: vec } : cp)
@@ -81,11 +90,11 @@ export abstract class EditorObjectControlPoints implements EditorObject {
         oldMousePos: VectorI,
         cpn: ControlPointI
     ) {
-        let d = V.delta(oldMousePos, newMousePos)
-        if (cpn.lazy) d = V.mul(d, cpn.lazy)
-        if (cpn.lockedAxis === 'x') d = V.mulVec(d, { x:1, y:0 })
-        if (cpn.lockedAxis === 'y') d = V.mulVec(d, { x:0, y:1 })
-        let res = V.add(cpn.oldMovingPos!, d)
+        let d = Vec.delta(oldMousePos, newMousePos)
+        if (cpn.lazy) d = Vec.mul(d, cpn.lazy)
+        if (cpn.lockedAxis === 'x') d = Vec.mulVec(d, { x:1, y:0 })
+        if (cpn.lockedAxis === 'y') d = Vec.mulVec(d, { x:0, y:1 })
+        let res = Vec.add(cpn.oldMovingPos!, d)
         if (cpn.allowOutOfRange !== true) res = gameCanvas.inRange(res)
         return cpn.snap ? d = gameCanvas.snapPos(res, 'grid-point') : res
     }
@@ -107,33 +116,18 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     }
 
     updateTooltips(mousePos: VectorI) {
-        this.controlPoints.forEach(cp => {
-            if (
-                cp.active === true && 
-                cp.hoverTooltip &&  
-                this.controlPointIncluded(cp, mousePos)
-            ) {
-                gameCanvas.setTooltip(
-                    cp.hoverTooltip.align, 
-                    cp.hoverTooltip.tooltip()
-                )
-            }
-        })
+        const cp = this.sortedCPs().find(cp => cp.hoverTooltip && cp.active && this.controlPointIncluded(cp, mousePos))
+        if (cp) gameCanvas.setTooltip(
+            cp.hoverTooltip!.align, 
+            cp.hoverTooltip!.tooltip()
+        )
     }
 
     onMouseDown(evt: MouseEvent, mousePos: VectorI) {
         if (evt.button === 0) {
-            let selected: [string,number] | undefined = undefined
-            this.controlPoints.forEach(cp => {
-                if (
-                    cp.active === true && 
-                    this.controlPointIncluded(cp, mousePos) && 
-                    (!selected || (selected && selected[1] < cp.zIndex!))
-                ) {
-                    selected = [ cp.key, cp.zIndex! ]
-                }
-            })
-            if (selected) this.selectPoint(selected[0])
+            const s = this.sortedCPs().find(cp => cp.active && this.controlPointIncluded(cp, mousePos))
+            console.log(this.sortedCPs())
+            if (s) this.selectPoint(s.key)
         }
         this.updateTooltips(mousePos)
     }
@@ -155,7 +149,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
 
     logCPs() {
         this.controlPoints.forEach(cp => {
-            console.log(cp.key +  ': ' + V.toString(this.getCPPos2(cp.key)))
+            console.log(cp.key +  ': ' + Vec.toString(this.getCPPos2(cp.key)))
         })
     }
 
@@ -177,7 +171,7 @@ export abstract class EditorObjectControlPoints implements EditorObject {
                 if (cp.shape === 'circle') g.arc(pos2.x, pos2.y, cp.paint.size, 0, Math.PI*2)
                 if (cp.shape === 'rect') {
                     const mt = (x: number, y: number, f?: boolean) => {
-                        const p = V.add(pos2, V.mulVec(V.square(cp.paint!.size!), V.vec(x,y)))
+                        const p = Vec.add(pos2, Vec.mulVec(Vec.square(cp.paint!.size!), Vec.vec(x,y)))
                         if (f === true) g.moveTo(p.x, p.y)
                         else g.lineTo(p.x, p.y)
                     }
@@ -199,7 +193,12 @@ export abstract class EditorObjectControlPoints implements EditorObject {
     }
 
     controlPointIncluded(cp: ControlPointI, mousePos: VectorI) {
-        return cp.includesPoint ? cp.includesPoint(cp, mousePos)
-                    : V.distance(mousePos, this.getCPPos2(cp.key)) <= cp.size!/gameCanvas.data.cellSize
+        return cp.includesPoint ? cp.includesPoint(cp, mousePos) : Vec.pointInShape(
+            cp.shape, 
+            mousePos, 
+            this.getCPPos2(cp.key), 
+            cp.size!/this.cellSize(), 
+            cp.size!/this.cellSize()
+        )
     }
 }

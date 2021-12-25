@@ -1,37 +1,50 @@
 import { GroundDataI, VectorI } from "../../../../../game/dec"
-import { Creative, V } from "../../../../adds"
+import { Creative, Vec } from "../../../../adds"
 import { image } from "../../../../images"
 import { gameCanvas } from "../../gameEditor"
 import { ControlPointI } from "../control-points"
-import { moveCPTemplate } from "../object"
-import { EditorObjectGeneric } from "../object-generic"
+import { moveCPTemplate } from "../element-templates"
+import { EditorObjectGeneric } from "../element-generic"
+import { circle } from "excalibur/build/dist/Util/DrawUtil"
 
 export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     oldW = 0
+    fixed = false
+    oldPos: VectorI
+    newPos: VectorI | undefined
 
     constructor(
         custom: GroundDataI,
         pos: VectorI
     ) {
-        super('ground', custom, pos, 1, 1)
+        super('ground', custom, pos, 1, 1, false)
+        this.createControlPoints()
+        this.oldPos = {...pos}
+        gameCanvas.setTooltip('bottom', {
+            text: 'Nochmal klicken.',
+            style: {
+                backgroundColor: 'rgba(230, 230, 50, 0.5)',
+                textColor: 'black'
+            }
+        })
         this.updateCP()
     }
 
     startCPs(): ControlPointI[] {
         return [
-            ...super.startCPs(),
             moveCPTemplate({ key: 'st-corner', tooltipText: 'Ziehe, um Größe zu verändern.', lockedAxis: 'x', snap: true}),
-            moveCPTemplate({ key: 'nd-corner', tooltipText: 'Ziehe, um Größe zu verändern.', lockedAxis: 'x', snap: true })
+            moveCPTemplate({ key: 'nd-corner', tooltipText: 'Ziehe, um Größe zu verändern.', lockedAxis: 'x', snap: true }),
+            ...super.startCPs()
         ]
     }
 
     getCPPos(key: string) {
-        const addVec = V.vec(0, this.custom().vertical === false && this.custom().elevated === 'b' ? 1 - this.g().height : 0)
+        const addVec = Vec.vec(0, this.custom().vertical === false && this.custom().elevated === 'b' ? 1 - this.g().height : 0)
         if (key === 'st-corner') return addVec
         else if (key === 'nd-corner') {
             const s = this.size()
             const c = this.custom().vertical
-            return V.add(V.vec(c ? 0 : s.x, c ? s.y : 0), addVec)
+            return Vec.add(Vec.vec(c ? 0 : s.x, c ? s.y : 0), addVec)
         }
         else return super.getCPPos(key)
     }
@@ -51,11 +64,11 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     }
 
     ltCornerVec(): VectorI {
-        return this.custom().elevated === 'b' && this.custom().vertical === false ? V.vec(0, 1 - this.g().height) : V.zero()
+        return this.custom().elevated === 'b' && this.custom().vertical === false ? Vec.vec(0, 1 - this.g().height) : Vec.zero()
     }
 
     size(n?: number) {
-        return V.vec(
+        return Vec.vec(
             this.custom().vertical ? (n ? n : 1) : this.custom().width, 
             this.custom().vertical ? this.custom().width : (this.custom().elevated ? 1/3 : 1) * (n ? n : 1)
         )
@@ -90,8 +103,8 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     ) {
         if (cpn.key === 'st-corner' || cpn.key === 'nd-corner') {
             const v = this.custom().vertical
-            const d = V.delta(oldMousePos, newMousePos)
-            const res = gameCanvas.snapPos(V.add(cpn.oldMovingPos!, d), 'grid-point')
+            const d = Vec.delta(oldMousePos, newMousePos)
+            const res = gameCanvas.snapPos(Vec.add(cpn.oldMovingPos!, d), 'grid-point')
             const direc = (a: VectorI) => v ? a.y : a.x
             let diff = (direc(res)) - direc(cpn.oldMovingPos!)
 
@@ -103,6 +116,43 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
             }
         }
         return super.movedCPPos(newMousePos, oldMousePos, cpn)
+    }
+
+    onMouseDown(evt: MouseEvent, mousePos: VectorI): void {
+        if (!this.fixed) {
+            this.updateCP()
+            this.fixed = true
+        }
+        else super.onMouseDown(evt, mousePos)
+    }
+
+    onMouseMove(evt: MouseEvent, buttonPos: (VectorI | undefined)[], mousePos: VectorI): void {
+        if (!this.fixed) {
+            this.newPos = gameCanvas.snapPos(mousePos, 'field-center')
+
+            this.newPos = Vec.add(this.newPos, Vec.vec(
+                this.newPos.x < this.oldPos.x ? -0.5 : 0.5,
+                this.newPos.y < this.oldPos.y ? -0.5 : 0.5
+            ))
+
+            const w = Math.abs(this.newPos.x - this.oldPos.x)
+            const h = Math.abs(this.newPos.y - this.oldPos.y)
+            
+            if (this.newPos.x < this.oldPos.x && w > h) this.data.geo.pos = Vec.copy(this.data.geo.pos, { x: this.newPos.x })
+            else this.data.geo.pos = Vec.copy(this.data.geo.pos, { x: this.oldPos.x })
+
+            if (this.newPos.y < this.oldPos.y && h > w) this.data.geo.pos = Vec.copy(this.data.geo.pos, { y: this.newPos.y })
+            else this.data.geo.pos = Vec.copy(this.data.geo.pos, { y: this.oldPos.y })
+
+            this.data.custom.width = w > h ? w : h
+            this.data.custom.vertical = w < h
+            this.updateSize()
+        } 
+        else super.onMouseMove(evt, buttonPos, mousePos)
+    }
+
+    onMouseUp(evt: MouseEvent, mousePos: VectorI): void {
+        if (this.fixed) super.onMouseUp(evt, mousePos)
     }
 
     paint(g: CanvasRenderingContext2D) {
@@ -121,9 +171,9 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
             g.lineWidth = 6
             g.strokeStyle = 'rgb(64, 140, 13)'
             g.beginPath()
-            const inset = 8
-            const p1 = V.add(this.gPosP(), V.vec(inset/2, -inset))
-            const p2 = V.add(V.addX(this.gPosP(), this.gWP()), V.vec(-inset/2, -inset))
+            const inset = 5
+            const p1 = Vec.add(this.gPosP(), Vec.vec(inset/2, -inset))
+            const p2 = Vec.add(Vec.addX(this.gPosP(), this.gWP()), Vec.vec(-inset/2, -inset))
             g.moveTo(p1.x, p1.y)
             g.lineTo(p2.x, p2.y)
             g.stroke()
@@ -132,8 +182,8 @@ export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
             g.lineWidth = 3
             g.strokeStyle = 'rgb(200, 0, 0)'
             const padding = 3
-            const pos2 = V.add(this.gPosP(), V.square(-padding))
-            const size2 = V.add(V.vec(this.gWP(), this.gHP()), V.square(padding*2))
+            const pos2 = Vec.add(this.gPosP(), Vec.square(-padding))
+            const size2 = Vec.add(Vec.vec(this.gWP(), this.gHP()), Vec.square(padding*2))
             Creative.paintRoundedRectangle(g, pos2.x, pos2.y, size2.x, size2.y, 8)
             g.stroke()
         }

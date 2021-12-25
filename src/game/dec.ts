@@ -1,4 +1,6 @@
-export type elementType = 'start-end' | 'ground' | 'score' | 'saw-blade'
+export type elementType = 'start-end' | 'ground' | 'score' | 'saw-blade' | 'command'
+export type geomShape = 'rect' | 'circle'
+export type editorColors = 'blue' | 'yellow'
 
 export interface VectorI {
     x: number
@@ -10,6 +12,7 @@ export function fullElementName(t: any) {
     if (t.type === 'start-end') i = 'Spiel Start/Ende'
     if (t.type === 'ground') i = 'Boden (Typ: ' + t.custom.groundType + ', Länge: ' + t.custom.width + (t.custom.vertical ? ', vertikal' : '') + ')'
     if (t.type === 'score') i = 'Score-Objekt'
+    if (t.type === 'saw-blade') i = 'Sägeblatt'
     return i
 }
 
@@ -48,6 +51,25 @@ export interface GroundDataI {
 export interface SawBladeDataI {
     radius: number
 }
+
+export interface CommandDataI {
+    command: string,
+    time: number, // x-Axis
+    custom: any
+}
+
+/*
+
+[/camera/zoom]
+zoom: number
+
+[/jumper/speechbuble]
+text: string
+
+[/jumper/gravity]
+gravity: number
+
+*/
 
 export type groundTypeI = 'none' | 'grass' | 'barrier' | 'ice'
 export function textGroundType(gt: groundTypeI) {

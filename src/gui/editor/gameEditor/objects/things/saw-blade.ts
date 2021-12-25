@@ -1,22 +1,23 @@
 import { SawBladeDataI, VectorI } from "../../../../../game/dec"
-import { V } from "../../../../adds"
+import { Vec } from "../../../../adds"
 import { image } from "../../../../images"
 import { gameCanvas } from "../../gameEditor"
 import { ControlPointI } from "../control-points"
-import { moveCPTemplate } from "../object"
-import { EditorObjectGeneric } from "../object-generic"
+import { moveCPTemplate } from "../element-templates"
+import { EditorObjectGeneric } from "../element-generic"
 
 export class SawBladeEditorObject extends EditorObjectGeneric<SawBladeDataI> {
     constructor(
         custom: SawBladeDataI,
         pos: VectorI
     ) {
-        super('saw-blade', custom, pos, 1, 1)
+        super('saw-blade', custom, pos, 1, 1, false)
         this.setRadius()
+        this.createControlPoints()
     }
 
     origin(): VectorI { // origin of object to the center
-        return V.vec(0.5,0.5)
+        return Vec.vec(0.5,0.5)
     }
 
     startCPs(): ControlPointI[] {
@@ -31,7 +32,7 @@ export class SawBladeEditorObject extends EditorObjectGeneric<SawBladeDataI> {
         if (key === 'radius-cp') this.setRadius(Math.abs(cp.x - this.g().pos.x))
     }
     getCPPos(key: string) {
-        if (key === 'radius-cp') return V.vec(this.data.custom.radius, 0)
+        if (key === 'radius-cp') return Vec.vec(this.data.custom.radius, 0)
         else return super.getCPPos(key)
     }
 
@@ -67,6 +68,6 @@ export class SawBladeEditorObject extends EditorObjectGeneric<SawBladeDataI> {
     }
 
     includesPoint(v: VectorI) {
-        return V.distance(v, this.g().pos) < this.custom().radius
+        return Vec.distance(v, this.g().pos) < this.custom().radius
     }
 }

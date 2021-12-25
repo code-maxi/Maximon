@@ -2,15 +2,17 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ex from "excalibur";
 import React from "react";
-import { ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
-import { Creative, directionT, modulo, TextBorderStyleI, V } from "../../adds";
+import { geomShape, ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
+import { Creative, def, directionT, modulo, TextBorderStyleI, Vec } from "../../adds";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
 import { image } from '../../images';
 import { GameCanvas } from '../../../game/canvas';
 import { editorTemplates } from './objects/object-templates';
-import { EditorObject } from './objects/object';
+import { EditorObjectI, elementAddButtonTemplates, elementSettingTemplates, gameEditorAddStyle } from './objects/element-templates';
 import { GroundEditorObject } from './objects/things/ground';
+import { CommandPoint } from './objects/command-points';
+import { fontSize } from '@mui/system';
 
 interface GameEditorStateI {
     cWidth: number,
@@ -20,6 +22,22 @@ interface GameEditorStateI {
 
 interface GameEditorPropsI {
     startData: SzeneDataOptI
+}
+
+export interface AddStyleI {
+    roundCorners: number,
+    width: number,
+    height: number,
+    text: string,
+    iconKey: string,
+    color: string,
+    snapType: string,
+    snapCoords?: string,
+    scaled?: boolean,
+    origin: VectorI,
+    shape: geomShape,
+    xtremeX?: (g: GameEditorCanvas) => [number, number],
+    xtremeY?: (g: GameEditorCanvas) => [number, number]
 }
 
 export let gameEditor: GameEditor
@@ -96,10 +114,14 @@ export class GameEditorCanvas {
     private oldEye = this.eye
     private diffPoint: VectorI = {x:0, y:0}
 
-    private addingType: [string, string] | undefined
-    private selectedElement: EditorObject | undefined
+    private addingObject: {
+        type: [string, string],
+        addingStyle: AddStyleI,
+        pos: VectorI
+    } | undefined
+    private selectedElement: EditorObjectI | undefined
 
-    private elements: EditorObject[] = []
+    private elements: EditorObjectI[] = []
     private buttonsPressed: boolean[] = [false, false, false]
     private buttonsPos: (VectorI | undefined)[] = [undefined, undefined, undefined]
 
@@ -115,6 +137,10 @@ export class GameEditorCanvas {
         right?: EditorTooltipI,
         bottom?: EditorTooltipI, 
     } = {}
+
+    sortedElements() {
+        return this.elements.sort((a, b) => b.params.zIndex - a.params.zIndex)
+    }
     
 
     constructor(gc: HTMLCanvasElement, data: SzeneDataOptI, sc: (c: string) => void) {
@@ -124,54 +150,73 @@ export class GameEditorCanvas {
 
         gameCanvas = this
 
-        this.canvas.onmousedown = e => {
-            this.setCanvasCursor(e)
+        const elementsMouseEvent = (f: (e: EditorObjectI) => void) => {
+            const sorted = this.sortedElements()
+            const viewPos = this.worldCoords(Vec.vec(0,0))
+            const viewSize = Vec.delta(viewPos, this.worldCoords(Vec.vec(this.canvas.width, this.canvas.height)))
+            let resFound = false
+            for (let i = 0; i < sorted.length; i ++) {
+                const item = sorted[i]
+                const inView = item.isInView(viewPos, viewSize)
+                if (!resFound && item.includesPoint(this.cursor)) {
+                    item.setHovered(true)
+                    resFound = true
+                } else item.setHovered(false)
+                if (inView) f(item)
+            }
+        }
 
-            if (e.button >= 0 && e.button <= this.buttonsPressed.length) {
-                this.buttonsPressed[e.button] = true
-                this.buttonsPos[e.button] = this.cursor
+        this.canvas.onmousedown = evt => {
+            this.setCanvasCursor(evt)
+
+            if (evt.button >= 0 && evt.button <= this.buttonsPressed.length) {
+                this.buttonsPressed[evt.button] = true
+                this.buttonsPos[evt.button] = this.cursor
             }
 
             if (this.buttonsPressed[1]) {
-                this.diffPoint = {x:e.clientX, y:e.clientY}
+                this.diffPoint = {x:evt.clientX, y:evt.clientY}
                 this.oldEye = this.eye
                 this.setCursor('move')
             }
 
+            elementsMouseEvent(o => o.onMouseDown(evt, this.cursor))
+
             if (this.buttonsPressed[0]) {
-                if (this.addingType) {
+                if (this.addingObject) {
                     this.fixAddingElement()
                     editor.setAddingType()
                 }
             }
-
-            this.elements.forEach(o => o.onMouseDown(e, this.cursor))
             
             this.paint()
         }
 
-        this.canvas.onmouseup = e => {
-            this.setCanvasCursor(e)
-            if (e.button >= 0 && e.button <= this.buttonsPressed.length) {
-                this.buttonsPressed[e.button] = false
-                this.buttonsPos[e.button] = undefined
+        this.canvas.onmouseup = evt => {
+            this.setCanvasCursor(evt)
+            if (evt.button >= 0 && evt.button <= this.buttonsPressed.length) {
+                this.buttonsPressed[evt.button] = false
+                this.buttonsPos[evt.button] = undefined
             }
             this.setCursor('default')
 
-            this.elements.forEach(o => o.onMouseUp(e, this.cursor))
+            elementsMouseEvent(o => o.onMouseUp(evt, this.cursor))
 
             this.paint()
         }
 
-        this.canvas.onmousemove = m => {
-            this.setCanvasCursor(m)
+        this.canvas.onmousemove = evt => {
+            this.setCanvasCursor(evt)
 
             if (this.buttonsPressed[1])
-                this.eye = V.add(this.oldEye, V.delta({x:m.clientX, y:m.clientY}, this.diffPoint))
+                this.eye = Vec.add(this.oldEye, Vec.delta({x:evt.clientX, y:evt.clientY}, this.diffPoint))
+
+            if (this.addingObject) this.setAddingObjectPos()
 
             this.toolTips.top = undefined
             this.toolTips.right = undefined
-            this.elements.forEach(o => o.onMouseMove(m, this.buttonsPos, this.cursor))
+
+            elementsMouseEvent(o => o.onMouseMove(evt, this.buttonsPos, this.cursor))
 
             this.paint()
         }
@@ -183,16 +228,23 @@ export class GameEditorCanvas {
         this.eye.y = -200
         this.eye.x = -200
 
-        this.elements.push(new GroundEditorObject(
+        /*this.elements.push(new GroundEditorObject(
             { vertical: true, groundType: 'grass', width: 3 }, V.vec(1,1)
-        ))
+        ))*/
         /*this.elements.push(new SawBladeEditorObject(
             {   
                 radius: 2
             }, V.vec(1,1)
         ))*/
+        /*this.elements.push(new CommandPoint({
+            command: '/jumper/set-speechbuble',
+            time: 4,
+            custom: {
+                text: 'Hello, world!'
+            }
+        }, V.vec(4, 5)))*/
 
-        this.select(this.elements[0])
+        //this.select(this.elements[0])
 
         this.paint()
     }
@@ -224,26 +276,47 @@ export class GameEditorCanvas {
         this.paint()
     }
 
-    snapPos(v: VectorI, type?: 'grid-point' | 'field-corner' | 'field-center') {
+    snapPos(v: VectorI, type?: 'grid-point' | 'field-corner' | 'field-center', coords?: string) {
         const t = type ? type : 'field-corner'
-        let res = V.zero()
+        let res = Vec.zero()
 
-        if (t === 'field-center' || t === 'field-corner') 
-            res = V.add(V.trunc(v), t === 'field-center' ? V.vec(0.5, -0.5) : V.zero())
-        else 
-            res = V.trunc(V.mul(V.subToNull(V.trunc(V.mul(v, 2)), V.square(-1)), 1/2))
+        if (t === 'field-center' || t === 'field-corner') res = Vec.add(
+            Vec.trunc(v),
+            t === 'field-center' ? Vec.vec(0.5, 0.5) : Vec.zero()
+        )
+        else res = Vec.trunc(
+            Vec.mul(
+                Vec.subToNull(
+                    Vec.trunc(Vec.mul(v, 2)), 
+                    Vec.square(-1)
+                ),
+                1/2
+            )
+        )
+
+        if (coords) {
+            const x = coords.includes('x')
+            const y = coords.includes('y')
+            res = Vec.vec(x ? res.x : v.x, y ? res.y : v.y)
+        }        
 
         return res 
     }
 
-    allElements() { return this.addingType ? [ ...this.elements, this.addingType ] : this.elements }
+    allElements() { return this.addingObject ? [ ...this.elements, this.addingObject ] : this.elements }
 
     fixAddingElement() {
-        if (this.addingType) {
-            const item = editorTemplates.find(et => et.title === this.addingType![0])!
-                .items.find(i => i.name === this.addingType![1])!
-            this.elements.push(item.templ(this.inRange(this.snapPos(this.cursor, 'field-corner'))))
-            this.addingType = undefined
+        if (this.addingObject) {
+            console.log(this.addingObject!.type)
+            console.log('--')
+
+            const item = elementAddButtonTemplates
+                .find(et => et.title === this.addingObject?.type[0])!
+                .items.find(ea => ea.buttonText === this.addingObject?.type[1])!
+
+            this.elements.push(item.templ(this.addingObject.pos))
+
+            this.addingObject = undefined
             this.setTooltip('bottom')
         }
     }
@@ -256,7 +329,7 @@ export class GameEditorCanvas {
         this.paint()
     }
 
-    select(o: EditorObject) {
+    select(o: EditorObjectI) {
         if (this.selectedElement && this.selectedElement !== o) {
             this.selectedElement.params.selected = false
             this.selectedElement.onSelect(false)
@@ -290,7 +363,7 @@ export class GameEditorCanvas {
     zoom(s: number, center?: VectorI) {
         const diff = s * this.scaling
         const middle = this.worldCoords({x:this.canvas.width/2, y:this.canvas.height/2})
-        this.eye = V.add(this.eye, V.mul(V.mulVec(center ? this.cursor : middle, this.dVec(diff)), this.data.cellSize))
+        this.eye = Vec.add(this.eye, Vec.mul(Vec.mulVec(center ? this.cursor : middle, this.dVec(diff)), this.data.cellSize))
         this.setScaling(diff + this.scaling)
     }
 
@@ -302,25 +375,34 @@ export class GameEditorCanvas {
     getScaling() { return this.scaling }
 
     worldCoords(v: VectorI) { 
-        return V.mulVec(
-            V.add(v, this.eye),
+        return Vec.mulVec(
+            Vec.add(v, this.eye),
             this.dVec(1/this.data.cellSize/this.scaling)
         ) 
     }
     screenCoords(v: VectorI) {
-        return V.sub(V.divVec(v, this.dVec(1/this.data.cellSize/this.scaling)), this.eye)
+        return Vec.sub(Vec.divVec(v, this.dVec(1/this.data.cellSize/this.scaling)), this.eye)
     }
 
-    mcs(v: VectorI) { return V.mul(v, this.data.cellSize) }
+    mcs(v: VectorI) { return Vec.mul(v, this.data.cellSize) }
 
     setCanvasCursor(m: MouseEvent) {
-        this.screenCursor = V.vec(m.clientX, m.clientY)
+        this.screenCursor = Vec.vec(m.clientX, m.clientY)
         this.cursor = this.worldCoords(this.screenCursor)
     }
-    setAddingElement(o?: [string, string]) {
-        this.addingType = o
+
+    setAddingElement(o?: string) {
+        if (o) {
+            const o2 = o.split('/') as [string,string]
+            this.addingObject = {
+                type: o2,
+                addingStyle: gameEditorAddStyle(o2, this),
+                pos: Vec.zero()
+            }
+        } else this.addingObject = undefined
+
         this.setTooltip('bottom', o ? {
-            text: 'Klicke, um hinzuzufügen.',
+            text: this.addingObject!.addingStyle.text,
             style: {
                 backgroundColor: 'rgba(230, 230, 50, 0.5)',
                 textColor: 'black'
@@ -328,25 +410,47 @@ export class GameEditorCanvas {
         } : undefined)
     }
 
-    dVec(s?: number) { return V.mul(V.vec(1,1), s ? s : 1) }
+    setAddingObjectPos() {
+        if (this.addingObject) {
+            const s = this.addingObject.addingStyle
+            this.addingObject.pos = s.snapType ? this.snapPos(this.cursor, s.snapType as any, s.snapCoords) : this.cursor
+
+            if (s.xtremeX) {
+                const xtreme = s.xtremeX(this)
+                if (this.addingObject.pos.x < xtreme[0]) this.addingObject.pos.x = xtreme[0]
+                if (this.addingObject.pos.x > xtreme[1]) this.addingObject.pos.x = xtreme[1] 
+            }
+            if (s.xtremeY) {
+                const xtreme = s.xtremeY(this)
+                if (this.addingObject.pos.y < xtreme[0]) this.addingObject.pos.y = xtreme[0]
+                if (this.addingObject.pos.y > xtreme[1]) this.addingObject.pos.y = xtreme[1] 
+            }
+        }
+    }
+
+    dVec(s?: number) { return Vec.mul(Vec.vec(1,1), s ? s : 1) }
 
     paint() {
         const g = this.canvas.getContext('2d')!
-        g.save()
 
         g.fillStyle = 'rgb(240, 250, 255)'
         g.fillRect(0,0, this.canvas.width, this.canvas.height)
 
         if (this.paintGrid) this.paintMarks(g)
 
+        g.save()
         g.translate(-this.eye.x, -this.eye.y)
         g.scale(this.scaling, this.scaling)
 
-        this.paintAdding(g)
-        this.elements.forEach(e => e.paint(g))
-        this.paintBorder(g)
+        this.elements.filter(e => !(e instanceof CommandPoint)).forEach(e => e.paint(g))
+        this.paintBorder(g)        
 
         g.restore()
+
+        CommandPoint.paintCommandPointRange(g)
+        this.elements.filter(e => (e instanceof CommandPoint)).forEach(e => e.paint(g))
+
+        this.paintAdding(g)
 
         this.paintTooltips(g)
     }
@@ -378,11 +482,11 @@ export class GameEditorCanvas {
     }
 
     paintBorder(g: CanvasRenderingContext2D) {
-        const zeroScreen = this.mcs(this.worldCoords(V.zero()))
-        const zeroWorld = V.zero()
-        const leftBottom = this.mcs(V.vec(0, this.data.height))
-        const xend = this.mcs(this.worldCoords(V.vec(this.canvas.width, 0))).x
-        const yend = this.mcs(this.worldCoords(V.vec(0, this.canvas.height))).y
+        const zeroScreen = this.mcs(this.worldCoords(Vec.zero()))
+        const zeroWorld = Vec.zero()
+        const leftBottom = this.mcs(Vec.vec(0, this.data.height))
+        const xend = this.mcs(this.worldCoords(Vec.vec(this.canvas.width, 0))).x
+        const yend = this.mcs(this.worldCoords(Vec.vec(0, this.canvas.height))).y
 
         g.fillStyle = 'white'
         const drawLine = (p1: VectorI, p2: VectorI) => {
@@ -401,7 +505,7 @@ export class GameEditorCanvas {
                 xend - zeroScreen.x,
                 diff
             )
-            drawLine(zeroWorld, V.vec(xend, zeroWorld.y))
+            drawLine(zeroWorld, Vec.vec(xend, zeroWorld.y))
         }
 
         if (zeroScreen.x < 0) {
@@ -412,7 +516,7 @@ export class GameEditorCanvas {
                 diff,
                 yend - zeroScreen.y
             )
-            drawLine(zeroWorld, V.vec(zeroWorld.x, leftBottom.y))
+            drawLine(zeroWorld, Vec.vec(zeroWorld.x, leftBottom.y))
         }
 
         if (yend > leftBottom.y) {
@@ -424,20 +528,33 @@ export class GameEditorCanvas {
                 diff
             )
             drawLine(
-                V.vec(zeroWorld.x, leftBottom.y), 
-                V.vec(xend - zeroScreen.x, leftBottom.y)
+                Vec.vec(zeroWorld.x, leftBottom.y), 
+                Vec.vec(xend - zeroScreen.x, leftBottom.y)
             )
         }
     }
 
     paintAdding(g: CanvasRenderingContext2D) {
-        if (this.addingType) {
-            g.fillStyle = 'rgba(255, 200, 100, 0.5)'
-            const p = this.mcs(this.inRange(this.snapPos(this.cursor, 'field-corner')))
-            g.fillRect(p.x, p.y, this.data.cellSize, this.data.cellSize)
-            const size = V.square(20)
-            const pc = V.addAll([p, this.mcs(V.vec(0.5,-0.5)), V.mulVec(size, V.vec(-0.5,0.5))])
-            g.drawImage(image('plus')!, pc.x, pc.y, size.x, size.y)
+        if (this.addingObject) {
+            const st = this.addingObject.addingStyle
+            const sc = st.scaled === true ? this.scaling : 1
+
+            const size = this.mcs(Vec.vec(st.width * sc, st.height * sc))
+            const p = this.screenCoords(this.addingObject.pos)
+
+            Creative.paintShape(g, {
+                shape: st.shape,
+                pos: p,
+                size: size,
+                radius: size.x/2,
+                fillColor: st.color,
+                roundCorners: st.roundCorners,
+                origin: st.origin
+            })
+
+            const imgSize = Vec.square(20 * sc)
+            let pc = Vec.add(p, Vec.mul(imgSize, -0.5))
+            g.drawImage(image(st.iconKey)!, pc.x, pc.y, imgSize.x, imgSize.y)
         }
     }
 

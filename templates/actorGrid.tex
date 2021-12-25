@@ -1,0 +1,40 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper, margin=0cm]{geometry}
+\usepackage[charter]{mathdesign}
+\usepackage{graphicx}
+
+\usepackage{tikz}
+\usetikzlibrary{
+	matrix,
+	positioning,
+	arrows.meta,
+	backgrounds,
+	angles,
+	quotes,
+	babel,
+	calc
+}
+
+\begin{document}
+
+\def\it{5}
+
+\begin{tikzpicture}[x=0.2\linewidth,y=0.2\linewidth]
+
+\foreach \x in {0,...,\it}
+{\draw[thin] (\x,0) -- (\x,\it);}
+
+\foreach \y in {0,...,\it}
+{\draw[thin] (0,\y) -- (\it,\y);}
+
+\foreach \x in {0,...,\it}
+{
+	\foreach \y in {0,...,\it}
+	{
+		\node[circle,draw] (c) at ($(\x,\y)+(0.5,0.5)$) {};
+	}
+}
+
+\end{tikzpicture}
+
+\end{document}

@@ -1,6 +1,7 @@
 import { ScoreDataI, StartEndDataI, VectorI } from "../../../../game/dec";
-import { EditorObject } from "./object";
-import { EditorObjectGeneric } from "./object-generic";
+import { CommandPoint } from "./command-points";
+import { EditorObjectI } from "./element-templates";
+import { EditorObjectGeneric } from "./element-generic";
 import { GroundEditorObject } from "./things/ground";
 import { SawBladeEditorObject } from "./things/saw-blade";
 
@@ -8,7 +9,7 @@ export const editorTemplates: {
     title: string,
     items: {
         name: string,
-        templ: (pos: VectorI) => EditorObject
+        templ: (pos: VectorI) => EditorObjectI
     }[]
 }[] = [
     {
@@ -123,6 +124,23 @@ export const editorTemplates: {
                 templ: (pos: VectorI) => new SawBladeEditorObject(
                     {   
                         radius: 0.5
+                    }, pos
+                )
+            }
+        ]
+    },
+    {
+        title: 'Command-Points',
+        items: [
+            {
+                name: 'Sprechblase',
+                templ: (pos: VectorI) => new CommandPoint(
+                    {
+                        command: '/jumper/set-speechbuble',
+                        time: 4,
+                        custom: {
+                            text: 'Hello, world!'
+                        }
                     }, pos
                 )
             }

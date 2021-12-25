@@ -1,27 +1,21 @@
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
-import { Alert, Button, ButtonGroup, Checkbox, Collapse, Divider, IconButton, List, ListItem, ListItemButton, ListItemText, ListSubheader, Slider, TextField, Typography } from "@mui/material";
+import { Alert, Button, ButtonGroup, Collapse, Divider, IconButton, List, ListItem, ListItemButton, ListItemText, ListSubheader, Typography } from "@mui/material";
 import React from "react";
-import { elementType, fullElementName, GroundDataI, GameActorI, GeoActorI, groundTypeI, textGroundType } from "../../../game/dec";
-import { Arr, NumberInput, SwitchButtonGroup } from "../../adds";
-import { game } from '../../../game/game';
-import { gameCanvas, gameEditor } from '../gameEditor/gameEditor';
-import { cellSize } from '../editor';
-import { isTemplateExpression } from 'typescript';
-import { editorTemplates } from '../gameEditor/objects/object-templates';
+import { fullElementName, GroundDataI, GeoActorI, groundTypeI, textGroundType } from "../../../game/dec";
+import { Arr, SwitchButtonGroup } from "../../adds";
+import { gameCanvas } from '../gameEditor/gameEditor';
+import { elementAddButtonTemplates, elementSettingTemplates } from '../gameEditor/objects/element-templates';
 
 export function ElementDrawer(p: {
-    onAddSelect: (e?: [string, string]) => void,
+    onAddSelect: (e?: string) => void,
     onESUpdate: (e: any) => void,
     onModeChange: (e: number) => void,
     selectedItem?: any,
-    addSelected?: [string, string],
+    addSelected?: string,
     mode: number
 }) {
-    /*React.useEffect(() => {
-        if (!p.selectedItem && p.mode === 2) p.onModeChange(1)
-    })*/
     return <div id="drawer">
             <ButtonGroup className="p-buttons">
                 <Button
@@ -52,22 +46,22 @@ export function ElementDrawer(p: {
 }
 
 export function ElementAddList(p: {
-    onAddSelect: (e?: [string, string]) => void,
-    selected?: [string, string]
+    onAddSelect: (e?: string) => void,
+    selected?: string
 }) {
-    return <React.Fragment>{ editorTemplates.map((l, i) => <List className="tab-1">
+    return <React.Fragment>{ elementAddButtonTemplates.map((t, i) => <List className="tab-1">
         { i !== 0 ? <Divider /> : undefined }
-        <ListSubheader>{ l.title }</ListSubheader>
+        <ListSubheader>{ t.title }</ListSubheader>
         {
-            l.items.map(i => <ListItemButton 
-                selected={ Arr.equal([l.title, i.name], p.selected) }
+            t.items.map(ea => <ListItemButton 
+                selected={ p.selected === t.title + '/' + ea.buttonText }
                 onClick={() => {
-                    if (!Arr.equal([l.title, i.name], p.selected)) {
-                        p.onAddSelect([l.title, i.name])
+                    if (p.selected !== t.title + '/' + ea.buttonText) {
+                        p.onAddSelect(t.title + '/' + ea.buttonText)
                     } else p.onAddSelect()
                 }}>
-                <ListItemText> { i.name } </ListItemText>
-            </ListItemButton>) 
+                <ListItemText> { ea.buttonText } </ListItemText>
+            </ListItemButton>)
         }
     </List>) }</React.Fragment>
 }
@@ -76,20 +70,6 @@ export function ElementSettings(p: {
     onESUpdate: (e: any) => void
     item: any
 }) {
-    const elementSettings = () => {
-        let i: React.ReactElement | undefined = undefined
-
-        console.log('type2')
-        console.log(p.item.type)
-
-        if (p.item.type === 'ground') {
-            const c = p.item as GeoActorI<GroundDataI>
-            i = <GroundDataModify item={c} onChange={s => p.onESUpdate(s)} />
-        }
-
-        return i
-    }
-
     return <div className="tab-2">
         <Typography className="my-title" variant="subtitle1">Element Einstellungen</Typography>
         <List>
@@ -99,21 +79,27 @@ export function ElementSettings(p: {
                 <ListItemText>Element entfernen?</ListItemText>
             </ListItem>
             
-            { p.item !== undefined ? elementSettings() : '' }
+            { p.item !== undefined ? elementSettingTemplates.find(t => t.type === p.item.type)!.SettingsGUI({
+                item: p.item,
+                onChange: p.onESUpdate
+            }) : '' }
         </List>
     </div>
 }
+
+/*
+
 
 function GroundDataModify(p: {
     item: GeoActorI<GroundDataI>,
     onChange: (v: GeoActorI<GroundDataI>) => void
 }) {
     const [gType, setGType] = React.useState<groundTypeI>(p.item.custom.groundType)
-    const [checkVertical, setCheckVertical] = React.useState(p.item.custom.vertical)
+    const [vertical, setVertical] = React.useState(p.item.custom.vertical)
     const [elevated, setElevated] = React.useState(p.item.custom.elevated)
     
     return <React.Fragment>
-        <ListItem>
+        <ListItem secondaryAction={
             <SwitchButtonGroup 
                 items={['none', 'grass', 'barrier', 'ice']}
                 selectedItem={gType}
@@ -128,11 +114,12 @@ function GroundDataModify(p: {
                     })
                 }}
                 convertText={t => textGroundType(t as groundTypeI)}
-                className="ground-type-switch"
             />
+        }>
+            <ListItemText>Bodentype</ListItemText>
         </ListItem>
         <ListItem secondaryAction={
-            <Checkbox
+            /*<Checkbox
                 checked={checkVertical}
                 onChange={ (e: React.ChangeEvent<HTMLInputElement>) => {
                     p.onChange({
@@ -144,10 +131,27 @@ function GroundDataModify(p: {
                     })
                     setCheckVertical(!checkVertical)
             } } />
+            <SwitchButtonGroup 
+                items={[true, false]}
+                selectedItem={vertical}
+                onChange={b => {
+                    p.onChange({
+                        ...p.item,
+                        custom: {
+                            ...p.item.custom,
+                            vertical: b
+                        }
+                    })
+                    
+                    setVertical(!vertical)
+                }}
+                convertText={b => b ? 'Vertikal' : 'Horizontal'}
+                color="success"
+            />
         }>
-            <ListItemText>Vertikal</ListItemText>
+            <ListItemText>Richtung</ListItemText>
         </ListItem>
-        <Collapse in={!checkVertical}>
+        <Collapse in={!vertical}>
             <ListItem secondaryAction={
                 <SwitchButtonGroup
                     items={[undefined, 't', 'b']}
@@ -163,7 +167,7 @@ function GroundDataModify(p: {
                         setElevated(s as ('t' | 'b' | undefined))
                     } }
                     convertText={s => s ? (s === 't' ? 'Oben' : 'Unten') : 'Kein'}
-                    color="secondary"
+                    color="success"
                 />
             }>
                 <ListItemText>Hochgestellt</ListItemText>
@@ -172,7 +176,6 @@ function GroundDataModify(p: {
     </React.Fragment>
 }
 
-/*
 
 const speechBuble = () => <React.Fragment>
             <ListItem secondaryAction={

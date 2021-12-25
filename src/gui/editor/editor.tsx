@@ -5,7 +5,7 @@ import { SettingsDrawer } from "./drawer/settings";
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { TabPanel } from "../adds";
-import { ElementDrawer } from "./drawer/drawer";
+import { ElementDrawer } from "./drawer/elementSettings";
 import { elementType, GroundDataI, SzeneDataOptI } from '../../game/dec';
 import { ReactGame } from '../../game/game';
 import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
@@ -16,7 +16,7 @@ export const cellSize = 50
 export let editor: Editor
 
 export class Editor extends React.Component<{}, {
-    addSelectedItem?: [string,string],
+    addSelectedItem?: string,
     mode: number,
     tab: number,
     selectedItem?: any
@@ -55,7 +55,7 @@ export class Editor extends React.Component<{}, {
         })
     }
 
-    setAddingType(a?: [string, string]) {
+    setAddingType(a?: string) {
         this.setState({ ...this.state, addSelectedItem: a })
     }
 

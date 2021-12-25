@@ -1,12 +1,12 @@
-import { elementType, fullElementName, GeoActorI, VectorI } from "../../../../game/dec"
-import { Creative, V } from "../../../adds"
+import { elementType, fullElementName, GeoActorI, geomShape, VectorI } from "../../../../game/dec"
+import { Creative, Vec } from "../../../adds"
 import { gameCanvas } from "../gameEditor"
 import { ControlPointI, EditorObjectControlPoints } from "./control-points"
-import { EditorObjectParams } from "./object"
+import { EditorObjectParamsI, elementSettingTemplates } from "./element-templates"
 
 export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     data: GeoActorI<T>
-    params: EditorObjectParams
+    params: EditorObjectParamsI
     wasIMoved = false
 
     constructor(
@@ -14,12 +14,14 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
         custom: T,
         pos: VectorI,
         w: number,
-        h: number
+        h: number,
+        createCPs?: boolean
     ) {
         super()
         this.params = {
             key: k,
-            selected: false
+            selected: false,
+            zIndex: 0
         }
         this.data = {
             type: k,
@@ -30,18 +32,18 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
             },
             custom: custom
         }
-        this.createControlPoints()
+        if (createCPs !== false) this.createControlPoints()
     }
 
     startCPs(): ControlPointI[] {
         return [
             {
                 key: 'move body',
-                shape: 'rect',
+                shape: this.shape(),
                 active: true,
                 snap: true,
                 zIndex: -1,
-                pos: V.zero(),
+                pos: Vec.zero(),
                 hoverTooltip: {
                     align: 'top',
                     tooltip: () => ({
@@ -61,24 +63,24 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     gHP() { return this.g().height * gameCanvas.data.cellSize }
     getData() { return this.data }
     setData(d: any, fromGUI?: boolean) { if (fromGUI !== false) this.data = d } // must be overridden
-    name() { return fullElementName(this.data) + (this.params.selected ? ' – ausgewählt' : '') }
+    name() { return fullElementName(this.data) }
     
-    origin(): VectorI { return V.zero() }
+    origin(): VectorI { return Vec.zero() }
 
     ltCornerVec() { // left-top corner
-        return V.mulVec(
+        return Vec.mulVec(
             this.origin(), 
-            V.vec(-this.g().width, -this.g().height)
+            Vec.vec(-this.g().width, -this.g().height)
         )
     }
-    ltCornerPos() { return V.add(this.g().pos, this.ltCornerVec()) }
+    ltCornerPos() { return Vec.add(this.g().pos, this.ltCornerVec()) }
 
     shiftPos(s: number) {
         this.data.geo.pos.y += s
     }
 
     moveTo(v: VectorI) {
-        this.data.geo.pos = V.add(v, this.ltCornerVec())
+        this.data.geo.pos = Vec.add(v, this.ltCornerVec())
     }
 
     paintSelf(g: CanvasRenderingContext2D) {
@@ -96,7 +98,7 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     paintBordersAround(g: CanvasRenderingContext2D, padding?: number, strokeStyle?: string) {
         Creative.paintBordersAround(
             g, this.gPosP(), 
-            V.vec(this.gWP(), this.gHP()),
+            Vec.vec(this.gWP(), this.gHP()),
             strokeStyle, padding
         )
     }
@@ -129,7 +131,7 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
 
     movedCPPos(nmp: VectorI, omp: VectorI, key: ControlPointI) {
         if (!this.wasIMoved) gameCanvas.setCursor('move')
-        if (V.distance(omp, nmp) > 0.5) this.wasIMoved = true
+        if (Vec.distance(omp, nmp) > 0.5) this.wasIMoved = true
         return super.movedCPPos(nmp, omp, key)
     }
 
@@ -141,8 +143,20 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     }
 
     snap(): 'center' | 'corner' | undefined { return 'center' }
+    shape(): geomShape { return 'rect' }
 
     includesPoint(v: VectorI) {
-        return V.includesPoint(v, this.ltCornerPos(), { x:this.g().width, y:this.g().height })
+        let b = false
+        if (this.shape() === 'rect') b = Vec.includesPointInRect(v, this.ltCornerPos(), { x:this.g().width, y:this.g().height })
+        if (this.shape() === 'circle') b = Vec.distance(v, this.g().pos) < this.g().width/2
+        return b
+    }
+    isInView(pos: VectorI, size: VectorI): boolean {
+        return Vec.intersectRects({
+            pos: pos, size: size
+        }, {
+            pos: this.g().pos,
+            size: Vec.vec(this.g().width, this.g().height)
+        })
     }
 }
