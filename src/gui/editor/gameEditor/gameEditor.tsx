@@ -1,18 +1,13 @@
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import ex from "excalibur";
 import React from "react";
-import { geomShape, ScoreDataI, SzeneDataI, SzeneDataObjI, SzeneDataOptI, VectorI } from "../../../game/dec";
-import { Creative, def, directionT, modulo, TextBorderStyleI, Vec } from "../../adds";
+import { geomShape, SzeneDataOptI, VectorI } from "../../../game/dec";
+import { Creative, directionT, modulo, TextBorderStyleI, Vec } from "../../adds";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
 import { image } from '../../images';
-import { GameCanvas } from '../../../game/canvas';
-import { editorTemplates } from './objects/object-templates';
-import { EditorObjectI, elementAddButtonTemplates, elementSettingTemplates, gameEditorAddStyle } from './objects/element-templates';
-import { GroundEditorObject } from './objects/things/ground';
+import { EditorObjectI, elementAddButtonTemplates, gameEditorAddStyle } from './objects/element-templates';
 import { CommandPoint } from './objects/command-points';
-import { fontSize } from '@mui/system';
 
 interface GameEditorStateI {
     cWidth: number,

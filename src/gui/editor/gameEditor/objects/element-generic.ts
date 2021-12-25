@@ -2,7 +2,7 @@ import { elementType, fullElementName, GeoActorI, geomShape, VectorI } from "../
 import { Creative, Vec } from "../../../adds"
 import { gameCanvas } from "../gameEditor"
 import { ControlPointI, EditorObjectControlPoints } from "./control-points"
-import { EditorObjectParamsI, elementSettingTemplates } from "./element-templates"
+import { EditorObjectParamsI } from "./element-templates"
 
 export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
     data: GeoActorI<T>

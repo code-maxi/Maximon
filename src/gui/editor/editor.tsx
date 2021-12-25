@@ -1,13 +1,12 @@
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import React from "react";
-import { SettingsDrawer } from "./drawer/settings";
+import { GlobalSettingsDrawer } from "./drawer/globalSettings";
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { TabPanel } from "../adds";
-import { ElementDrawer } from "./drawer/elementSettings";
-import { elementType, GroundDataI, SzeneDataOptI } from '../../game/dec';
-import { ReactGame } from '../../game/game';
+import { ElementDrawer } from "./drawer/elementDrawer";
+import { SzeneDataOptI } from '../../game/dec';
 import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
 import { loadImages } from '../images';
 
@@ -77,7 +76,7 @@ export class Editor extends React.Component<{}, {
                         </Tabs>
                     </div>
                     <TabPanel value={1} index={this.state.tab}>
-                        <SettingsDrawer onGameSettingsChange={gs => gameCanvas.updateSettings(gs)} gameSettings={this.gameSettings} onSave={ () => {} } />
+                        <GlobalSettingsDrawer onGameSettingsChange={gs => gameCanvas.updateSettings(gs)} gameSettings={this.gameSettings} onSave={ () => {} } />
                     </TabPanel>
                     <TabPanel value={2} index={this.state.tab}>
                          <ElementDrawer

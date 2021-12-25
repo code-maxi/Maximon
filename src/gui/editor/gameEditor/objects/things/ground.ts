@@ -1,11 +1,9 @@
 import { GroundDataI, VectorI } from "../../../../../game/dec"
 import { Creative, Vec } from "../../../../adds"
-import { image } from "../../../../images"
 import { gameCanvas } from "../../gameEditor"
 import { ControlPointI } from "../control-points"
 import { moveCPTemplate } from "../element-templates"
 import { EditorObjectGeneric } from "../element-generic"
-import { circle } from "excalibur/build/dist/Util/DrawUtil"
 
 export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
     oldW = 0

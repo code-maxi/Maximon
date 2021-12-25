@@ -1,5 +1,3 @@
-import { createNumericLiteral } from "typescript"
-
 let images: [string, HTMLImageElement][] = []
 
 let fl = 0

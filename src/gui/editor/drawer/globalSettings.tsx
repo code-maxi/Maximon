@@ -1,5 +1,4 @@
-import { Button, ButtonGroup, Checkbox, Divider, FormControlLabel, List, ListItem, ListItemText, ListSubheader, Slider, TextField, Typography } from "@mui/material";
-import React from "react";
+import { Button, ButtonGroup, Checkbox, Divider, List, ListItem, ListItemText, ListSubheader, Slider, TextField } from "@mui/material";
 import { SzeneDataOptI } from "../../../game/dec";
 
 export interface StandartSettings {
@@ -17,7 +16,7 @@ let ss: StandartSettings = {
     creator: ""
 }
 
-export function SettingsDrawer(p: {
+export function GlobalSettingsDrawer(p: {
     onSave: (s?: StandartSettings) => void,
     onGameSettingsChange: (gs: SzeneDataOptI) => void,
     gameSettings: SzeneDataOptI

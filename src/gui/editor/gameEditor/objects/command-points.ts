@@ -1,9 +1,7 @@
 import { CommandDataI, editorColors, geomShape, VectorI } from "../../../../game/dec";
 import { Creative, def, Num, Vec } from "../../../adds";
-import { image } from "../../../images";
 import { gameCanvas } from "../gameEditor";
-import { ControlPointI, EditorObjectControlPoints } from "./control-points";
-import { EditorObjectParamsI } from "./element-templates";
+import { ControlPointI } from "./control-points";
 import { EditorObjectGeneric } from "./element-generic";
 
 export interface CommandStyleI {
@@ -102,6 +100,7 @@ export class CommandPoint extends EditorObjectGeneric<CommandDataI> {
         super.setCPPos(cp, key)
         if (key === 'move body') this.setToPos(cp)
     }
+    
     movedCPPos(
         newMousePos: VectorI, 
         oldMousePos: VectorI,

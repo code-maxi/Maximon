@@ -1,11 +1,9 @@
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import { Button, ButtonGroup, IconButton, TextField } from "@mui/material";
-import { Box } from "@mui/system";
 import React from 'react';
 import { editorColors, geomShape, VectorI } from '../game/dec';
-import { NumericLiteral } from 'typescript';
-import { CommandPoint, CommandStyleI } from './editor/gameEditor/objects/command-points';
+import { CommandStyleI } from './editor/gameEditor/objects/command-points';
 import { image } from './images';
 
 // Type Declarations
