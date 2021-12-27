@@ -1,8 +1,8 @@
-import { CommandDataI, editorColors, geomShape, VectorI } from "../../../../game/dec";
+import { CommandDataI, editorColors, GeoActorI, GeoDataI, geomShape, VectorI } from "../../../../game/dec";
 import { Creative, def, Num, Vec } from "../../../adds";
 import { gameCanvas } from "../gameEditor";
 import { ControlPointI } from "./control-points";
-import { EditorObjectGeneric } from "./element-generic";
+import { EditorElementGeneric } from "./element-generic";
 
 export interface CommandStyleI {
     iconKey?: string,
@@ -25,21 +25,28 @@ export const commandPointStyle: [string, CommandStyleI][] = [
     } ]
 ]
 
-export class CommandPoint extends EditorObjectGeneric<CommandDataI> {
+export class CommandPoint extends EditorElementGeneric<CommandDataI> {
     static command_point_size = 0.45 
     static max_y_pos = 80
     static min_y_pos = 30
 
     yPos = 30
 
-    constructor(d: CommandDataI, pos: VectorI) {
+    constructor(
+        c1?: {
+            d: CommandDataI,
+            pos: VectorI
+        },
+        c2?: GeoActorI<CommandDataI>
+    ) {
         super(
-            'command',
-            d, pos,
-            CommandPoint.command_point_size,
-            CommandPoint.command_point_size
+            c1 ? {
+                type: 'command',
+                custom: c1.d,
+                geo: { pos: Vec.zero(), width: 1, height: 1 }
+            } : c2!
         )
-        this.setToPos(pos)
+        this.setToPos(this.data.geo.pos)
     }
 
     shape(): geomShape { return 'circle' }

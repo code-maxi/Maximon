@@ -1,37 +1,26 @@
-import { elementType, fullElementName, GeoActorI, geomShape, VectorI } from "../../../../game/dec"
-import { Creative, Vec } from "../../../adds"
+import { elementType, fullElementName, GeoActorI, GeoDataI, geomShape, VectorI } from "../../../../game/dec"
+import { Creative, def, Vec } from "../../../adds"
 import { gameCanvas } from "../gameEditor"
 import { ControlPointI, EditorObjectControlPoints } from "./control-points"
 import { EditorObjectParamsI } from "./element-templates"
 
-export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
+export class EditorElementGeneric<T> extends EditorObjectControlPoints {
     data: GeoActorI<T>
     params: EditorObjectParamsI
     wasIMoved = false
 
     constructor(
-        k: elementType, 
-        custom: T,
-        pos: VectorI,
-        w: number,
-        h: number,
+        data: GeoActorI<T>,
         createCPs?: boolean
     ) {
         super()
+
         this.params = {
-            key: k,
+            key: data.type,
             selected: false,
             zIndex: 0
         }
-        this.data = {
-            type: k,
-            geo: {
-                width: w,
-                height: h,
-                pos: pos
-            },
-            custom: custom
-        }
+        this.data = data
         if (createCPs !== false) this.createControlPoints()
     }
 
@@ -56,11 +45,19 @@ export class EditorObjectGeneric<T> extends EditorObjectControlPoints {
         ]
     }
 
+    createControlPoints(): void {
+        super.createControlPoints()
+        this.controlPoints.map(
+            cp => this.onlyActiveCPsSelect()
+                .includes(cp.key) ? ({ ...cp, active: false }) : cp
+        )
+    }
+
     custom() { return this.data.custom }
     g() { return this.data.geo }
     gPosP() { return gameCanvas.mcs(this.ltCornerPos()) }
-    gWP() { return this.g().width * gameCanvas.data.cellSize }
-    gHP() { return this.g().height * gameCanvas.data.cellSize }
+    gWP() { return this.g().width * gameCanvas.cellSize() }
+    gHP() { return this.g().height * gameCanvas.cellSize() }
     getData() { return this.data }
     setData(d: any, fromGUI?: boolean) { if (fromGUI !== false) this.data = d } // must be overridden
     name() { return fullElementName(this.data) }

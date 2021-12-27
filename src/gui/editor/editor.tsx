@@ -9,10 +9,12 @@ import { ElementDrawer } from "./drawer/elementDrawer";
 import { SzeneDataOptI } from '../../game/dec';
 import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
 import { loadImages } from '../images';
+import { initKeys } from '../shortcuts';
 
 export const cellSize = 50
 
 export let editor: Editor
+
 
 export class Editor extends React.Component<{}, {
     addSelectedItem?: string,
@@ -39,11 +41,13 @@ export class Editor extends React.Component<{}, {
         editor = this
         loadImages([
             { key: 'plus', path: 'images/editor/plus.png' },
+            { key: 'duplicate', path: 'images/editor/back.png' },
             { key: 'saw-blade', path: 'images/editor/elements/rundscheibe.png' },
             { key: 'cp/zoom', path: 'images/editor/command-points/zoom.svg', color: 'white' },
             { key: 'cp/speechbuble', path: 'images/editor/command-points/speechbuble.svg', color: 'white' },
             { key: 'cp/gravity', path: 'images/editor/command-points/gravity.svg', color: 'white' }
         ], () => {})
+        initKeys()
     }
 
     setES(o: any, updateState?: boolean, updateGame?: boolean) {

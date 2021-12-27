@@ -6,8 +6,10 @@ import { Creative, directionT, modulo, TextBorderStyleI, Vec } from "../../adds"
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
 import { image } from '../../images';
-import { EditorObjectI, elementAddButtonTemplates, gameEditorAddStyle } from './objects/element-templates';
+import { dataSetPos, EditorObjectI, elementAddButtonTemplates, gameEditorAddStyle, newElementByType } from './objects/element-templates';
 import { CommandPoint } from './objects/command-points';
+import { SawBladeEditorObject } from './objects/things/saw-blade';
+import { registerShortcut } from '../../shortcuts';
 
 interface GameEditorStateI {
     cWidth: number,
@@ -23,8 +25,8 @@ export interface AddStyleI {
     roundCorners: number,
     width: number,
     height: number,
-    text: string,
-    iconKey: string,
+    addText: string,
+    duplicateText: string,
     color: string,
     snapType: string,
     snapCoords?: string,
@@ -110,17 +112,19 @@ export class GameEditorCanvas {
     private diffPoint: VectorI = {x:0, y:0}
 
     private addingObject: {
-        type: [string, string],
+        addPath?: [string, string],
         addingStyle: AddStyleI,
-        pos: VectorI
+        pos: VectorI,
+        duplicateObjectData?: any
     } | undefined
+
     private selectedElement: EditorObjectI | undefined
 
     private elements: EditorObjectI[] = []
     private buttonsPressed: boolean[] = [false, false, false]
     private buttonsPos: (VectorI | undefined)[] = [undefined, undefined, undefined]
 
-    data: SzeneDataOptI
+    private data: SzeneDataOptI
 
     setCursor: (c: string) => void
 
@@ -137,7 +141,6 @@ export class GameEditorCanvas {
         return this.elements.sort((a, b) => b.params.zIndex - a.params.zIndex)
     }
     
-
     constructor(gc: HTMLCanvasElement, data: SzeneDataOptI, sc: (c: string) => void) {
         this.data = data
         this.canvas = gc
@@ -216,6 +219,19 @@ export class GameEditorCanvas {
             this.paint()
         }
 
+        registerShortcut('d', { shiftDown: true }, () => {
+            this.duplicateSelected()
+            this.paint()
+        })
+        registerShortcut('Escape', {}, () => {
+            this.cancelAdding()
+            this.paint()
+        })
+        registerShortcut('Delete', {}, () => {
+            this.removeSelected()
+            this.paint()
+        })
+
         this.canvas.onwheel = e => {
             this.zoom(e.deltaY * (-0.0005))
         }
@@ -226,11 +242,19 @@ export class GameEditorCanvas {
         /*this.elements.push(new GroundEditorObject(
             { vertical: true, groundType: 'grass', width: 3 }, V.vec(1,1)
         ))*/
-        /*this.elements.push(new SawBladeEditorObject(
-            {   
-                radius: 2
-            }, V.vec(1,1)
-        ))*/
+        this.elements.push(new SawBladeEditorObject(
+            {
+                type: 'saw-blade',
+                custom: {
+                    radius: 0.5
+                },
+                geo: {
+                    pos: Vec.vec(1,1),
+                    width: 1,
+                    height: 1
+                }
+            }
+        ))
         /*this.elements.push(new CommandPoint({
             command: '/jumper/set-speechbuble',
             time: 4,
@@ -239,7 +263,7 @@ export class GameEditorCanvas {
             }
         }, V.vec(4, 5)))*/
 
-        //this.select(this.elements[0])
+        this.select(this.elements[0])
 
         this.paint()
     }
@@ -250,7 +274,6 @@ export class GameEditorCanvas {
 
     setTooltip(d: directionT, tooltip?: EditorTooltipI) {
         this.toolTips[d] = tooltip
-        this.paint()
     }
     clearTooltips() {
         // cleat all tooltips
@@ -302,24 +325,31 @@ export class GameEditorCanvas {
 
     fixAddingElement() {
         if (this.addingObject) {
-            console.log(this.addingObject!.type)
-            console.log('--')
+            let item: EditorObjectI | undefined = undefined
 
-            const item = elementAddButtonTemplates
-                .find(et => et.title === this.addingObject?.type[0])!
-                .items.find(ea => ea.buttonText === this.addingObject?.type[1])!
+            if (this.addingObject.duplicateObjectData) {
+                item = newElementByType(dataSetPos(
+                    JSON.parse(JSON.stringify(this.addingObject.duplicateObjectData)),
+                    this.addingObject.pos
+                ))
+            }
+            else if (this.addingObject.addPath) {
+                item = elementAddButtonTemplates
+                    .find(et => et.titleId === this.addingObject!.addPath![0])!
+                    .items.find(ea => ea.itemId === this.addingObject!.addPath![1])!
+                    .templ(this.addingObject.pos)
+            }
 
-            this.elements.push(item.templ(this.addingObject.pos))
+            if (item) {
+                this.elements.push(item)
 
-            this.addingObject = undefined
-            this.setTooltip('bottom')
+                this.addingObject = undefined
+                this.setTooltip('bottom')
+            } else throw 'Item is undefined. (during adding element)'
         }
     }
 
     updateSelected(d: any) {
-        console.log('update data')
-        console.log(d)
-        console.log()
         this.selectedElement?.setData(d, true)
         this.paint()
     }
@@ -351,7 +381,32 @@ export class GameEditorCanvas {
             const se = this.selectedElement
             if (se.params.selected) this.select(se)
             this.elements = this.elements.filter(el => el !== se)
-            this.paint()
+        }
+    }
+    duplicateSelected() {
+        if (this.selectedElement) {
+            this.addingObject = {
+                addingStyle: gameEditorAddStyle(
+                    undefined,
+                    this.selectedElement.getData()
+                ),
+                duplicateObjectData: this.selectedElement.getData(),
+                pos: Vec.zero()
+            }
+    
+            this.setTooltip('bottom', {
+                text: this.addingObject!.addingStyle.duplicateText,
+                style: {
+                    backgroundColor: 'rgba(230, 230, 50, 0.5)',
+                    textColor: 'black'
+                }
+            })
+        }
+    }
+    cancelAdding() {
+        if (this.addingObject) {
+            this.addingObject = undefined
+            this.setTooltip('bottom')
         }
     }
 
@@ -389,15 +444,16 @@ export class GameEditorCanvas {
     setAddingElement(o?: string) {
         if (o) {
             const o2 = o.split('/') as [string,string]
+
             this.addingObject = {
-                type: o2,
-                addingStyle: gameEditorAddStyle(o2, this),
+                addPath: o2,
+                addingStyle: gameEditorAddStyle(o2),
                 pos: Vec.zero()
             }
         } else this.addingObject = undefined
 
         this.setTooltip('bottom', o ? {
-            text: this.addingObject!.addingStyle.text,
+            text: this.addingObject!.addingStyle.addText,
             style: {
                 backgroundColor: 'rgba(230, 230, 50, 0.5)',
                 textColor: 'black'
@@ -549,7 +605,7 @@ export class GameEditorCanvas {
 
             const imgSize = Vec.square(20 * sc)
             let pc = Vec.add(p, Vec.mul(imgSize, -0.5))
-            g.drawImage(image(st.iconKey)!, pc.x, pc.y, imgSize.x, imgSize.y)
+            g.drawImage(image(this.addingObject.duplicateObjectData ? 'duplicate' : 'plus')!, pc.x, pc.y, imgSize.x, imgSize.y)
         }
     }
 

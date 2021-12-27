@@ -192,7 +192,7 @@ export const Arr = {
         let arr: T[] = []
         for (let key in o) {
             try { arr.push(o[key] as T) }
-            catch { console.log('cast-err') }
+            catch { throw 'cast error' }
         }
         return arr
     },

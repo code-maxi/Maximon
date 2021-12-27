@@ -126,7 +126,6 @@ export abstract class EditorObjectControlPoints implements EditorObjectI {
     onMouseDown(evt: MouseEvent, mousePos: VectorI) {
         if (evt.button === 0) {
             const s = this.sortedCPs().find(cp => cp.active && this.controlPointIncluded(cp, mousePos))
-            console.log(this.sortedCPs())
             if (s) this.selectPoint(s.key)
         }
         this.updateTooltips(mousePos)

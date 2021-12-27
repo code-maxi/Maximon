@@ -11,7 +11,13 @@
 - [x] Z-Index
 
 - [ ] ElementDrawer – tabs doesn't scroll
-- [ ] GameEditor – Adding doesn't work
+- [x] GameEditor – Adding doesn't work
+- [ ] Ground – tooltip by adding
+- [x] Element – duplicate
+- [ ] Element – modify data
+- [ ] Elements – implement classes for others
+- [ ] Element-Selecting – bug
+- [ ] Update Element Settings – bug
 
 /////////////
 

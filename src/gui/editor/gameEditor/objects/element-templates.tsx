@@ -1,13 +1,15 @@
-import { elementType, GeoActorI, GroundDataI, groundTypeI, ScoreDataI, StartEndDataI, textGroundType, VectorI } from "../../../../game/dec"
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import { elementType, GeoActorI, GroundDataI, groundTypeI, ScoreDataI, textGroundType, VectorI } from "../../../../game/dec"
 import { SwitchButtonGroup, Vec } from "../../../adds"
-import { AddStyleI, GameEditorCanvas } from "../gameEditor"
+import { AddStyleI, gameCanvas } from "../gameEditor"
 import { CommandPoint } from "./command-points"
 import { ControlPointI } from "./control-points"
-import { Collapse, ListItem, ListItemText } from "@mui/material";
+import { Collapse, Divider, IconButton, List, ListItem, ListItemText } from "@mui/material";
 import React from "react";
 import { GroundEditorObject } from "./things/ground"
 import { SawBladeEditorObject } from "./things/saw-blade"
-import { EditorObjectGeneric } from "./element-generic"
+import { EditorElementGeneric } from "./element-generic"
+import FileCopyIcon from '@mui/icons-material/FileCopy';
 
 export interface EditorObjectParamsI {
     key: elementType,
@@ -62,50 +64,40 @@ export function moveCPTemplate(p: {
             strokeColor: 'red',
             size: 6
         },
-        active: false,
+        active: true,
         pos: Vec.zero()
     }
-}
-
-export function gameEditorAddStyle(addingType: [string, string], gec: GameEditorCanvas) {
-    let res: AddStyleI = {
-        roundCorners: 5,
-        width: 1,
-        height: 1,
-        text: 'Klicken, um hinzuzufügen.',
-        color: 'rgba(255, 200, 100, 0.5)',
-        iconKey: 'plus',
-        origin: Vec.vec(0,0),
-        snapType: 'field-corner',
-        shape: 'rect',
-        scaled: true
-    }
-    if (addingType[0] === 'Zeit-Event') {
-        res = {
-            ...res,
-            scaled: false,
-            origin: Vec.square(0.5),
-            shape: 'circle',
-            color: 'rgba(50, 200, 255, 0.4)',
-            snapType: 'grid-point',
-            snapCoords: 'x',
-            xtremeY: (g) => CommandPoint.commandPointRange().map(i => g.worldCoords(Vec.vec(0, i)).y) as [number, number]
-        }
-    }
-    if (addingType[1] === 'Sägeblatt') {
-        res = {
-            ...res,
-            origin: Vec.square(0.5),
-            shape: 'circle',
-            snapType: 'grid-point'
-        }
-    }
-    return res
 }
 
 export interface EditorElementTemplateI<D> { // D = Data-Type
     type: elementType,
     SettingsGUI: (p: {item: D, onChange: (cd: D) => void}) => React.ReactElement | undefined
+}
+
+export function AbstractElementSettings(p: {
+    onESUpdate: (e: any) => void
+    item: any
+}) {
+    return <List>
+        <ListItem secondaryAction={
+            <IconButton color="error" onClick={ () => gameCanvas.removeSelected() }><DeleteRoundedIcon /></IconButton>
+        }>
+            <ListItemText>Element entfernen (Enf)</ListItemText>
+        </ListItem>
+
+        <ListItem secondaryAction={
+            <IconButton color="primary" onClick={ () => gameCanvas.duplicateSelected() }><FileCopyIcon /></IconButton>
+        }>
+            <ListItemText>Element duplizieren (Shift+D)</ListItemText>
+        </ListItem>
+
+        <Divider style={{ margin: '10px 15px' }} />
+        
+        { p.item !== undefined ? elementSettingTemplates.find(t => t.type === p.item.type)!.SettingsGUI({
+            item: p.item,
+            onChange: p.onESUpdate
+        }) : '' }
+    </List>
 }
 
 export const elementSettingTemplates: EditorElementTemplateI<any>[] = [
@@ -194,145 +186,313 @@ export const elementSettingTemplates: EditorElementTemplateI<any>[] = [
     }
 ]
 
+export function dataSetPos(p: any, pos: VectorI) {
+    return {
+        ...p,
+        geo: {
+            ...p.geo,
+            pos: pos
+        }
+    }
+}
+
 export const elementAddButtonTemplates: {
-    title: string,
+    titleText: string,
+    titleId: string,
     items: {
         buttonText: string,
-        templ: (pos: VectorI) => EditorObjectI
+        itemId: string,
+        templ: (pos: VectorI, data?: any) => EditorObjectI
     }[]
 }[] = [
     {
-        title: 'Punkte Sammeln',
+        titleText: 'Punkte Sammeln',
+        titleId: 'score',
         items: [
             {
                 buttonText: 'Stern',
-                templ: (pos: VectorI) => new EditorObjectGeneric<ScoreDataI>(
-                    'score', { type: 'star' }, pos,
-                    1,1
+                itemId: 'star',
+                templ: (pos: VectorI, data?: any) => new EditorElementGeneric<ScoreDataI>(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'score',
+                        custom: {
+                            type: 'star'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             },
             {
                 buttonText: 'Münze',
-                templ: (pos: VectorI) => new EditorObjectGeneric<ScoreDataI>(
-                    'score', { type: 'coin' }, pos,
-                    1,1
+                itemId: 'coin',
+                templ: (pos: VectorI, data?: any) => new EditorElementGeneric<ScoreDataI>(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'score',
+                        custom: {
+                            type: 'coin'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             },
         ]
     },
-    {
+    /*{
         title: 'Start und Ziel',
         items: [
             {
                 buttonText: 'Start',
-                templ: (pos: VectorI) => new EditorObjectGeneric<StartEndDataI>(
-                    'start-end', { type: 'start' }, pos,
-                    1,1
+                templ: (pos: VectorI, data?: any) => new EditorElementGeneric<StartEndDataI>(
+                    !data ? {
+                        key: 'start-end',
+                        custom: {
+                            type: 'star'
+                        },
+                        pos: pos,
+                        w: 1,
+                        h: 1
+                    }: undefined, 
+                    data ? data : undefined
                 )
             },
             {
                 buttonText: 'Ziel',
-                templ: (pos: VectorI) => new EditorObjectGeneric<StartEndDataI>(
+                templ: (pos: VectorI) => new EditorElementGeneric<StartEndDataI>(
                     'start-end', { type: 'end' }, pos,
                     1,1
                 )
             },
         ]
-    },
+    },*/
     {
-        title: 'Böden',
+        titleText: 'Böden',
+        titleId: 'grounds',
         items: [
             {
                 buttonText: 'Schlichter Boden',
-                templ: (pos: VectorI) => new GroundEditorObject(
-                    {
-                        vertical: false,
-                        width: 1,
-                        groundType: 'none'
-                    }, pos
+                itemId: 'simple-ground',
+                
+                templ: (pos: VectorI, data?: any) => new GroundEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'ground',
+                        custom: {
+                            vertical: false,
+                            width: 1,
+                            groundType: 'none'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             },
             {
                 buttonText: 'Boden mit Gras',
-                templ: (pos: VectorI) => new GroundEditorObject(
-                    {
-                        vertical: false,
-                        width: 1,
-                        groundType: 'grass'
-                    }, pos
+                itemId: 'ground-with-grass',
+                templ: (pos: VectorI, data?: any) => new GroundEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'ground',
+                        custom: {
+                            vertical: false,
+                            width: 1,
+                            groundType: 'grass'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             },
             {
                 buttonText: 'Hochgestellter Boden mit Gras',
-                templ: (pos: VectorI) => new GroundEditorObject(
-                    {
-                        vertical: false,
-                        width: 1,
-                        groundType: 'grass',
-                        elevated: 't'
-                    }, pos
+                itemId: 'elevated-ground',
+                templ: (pos: VectorI, data?: any) => new GroundEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'ground',
+                        custom: {
+                            vertical: false,
+                            width: 1,
+                            groundType: 'grass',
+                            elevated: 't'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             },
             {
                 buttonText: 'Schlichter, vertikaler Boden',
-                templ: (pos: VectorI) => new GroundEditorObject(
-                    {
-                        vertical: true,
-                        width: 1,
-                        groundType: 'none'
-                    }, pos
+                itemId: 'vertical ground',
+                templ: (pos: VectorI, data?: any) => new GroundEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'ground',
+                        custom: {
+                            vertical: true,
+                            width: 1,
+                            groundType: 'none'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             },
             {
                 buttonText: 'Vereister Boden',
-                templ: (pos: VectorI) => new GroundEditorObject(
-                    {   
-                        vertical: false,
-                        width: 1,
-                        groundType: 'ice'
-                    }, pos
+                itemId: 'frosted-ground',
+                templ: (pos: VectorI, data?: any) => new GroundEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'ground',
+                        custom: {
+                            vertical: false,
+                            width: 1,
+                            groundType: 'ice'
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             }
         ]
     },
     {
-        title: 'Hindernisse',
+        titleText: 'Hindernisse',
+        titleId: 'barriers',
         items: [
             {
                 buttonText: 'Hindernis-Boden',
-                templ: (pos: VectorI) => new GroundEditorObject(
-                    {   
-                        vertical: false,
-                        width: 1,
-                        groundType: 'barrier'
-                    }, pos
+                itemId: 'barrier-ground',
+                templ: (pos: VectorI, data?: any) => new GroundEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'ground',
+                        custom: {
+                            vertical: false,
+                            width: 1,
+                            groundType: 'barrier'
+                        },
+                        geo: {
+                            pos: pos,
+                            w: 1,
+                            h: 1
+                        }
+                    }
                 )
             },
             {
                 buttonText: 'Sägeblatt',
-                templ: (pos: VectorI) => new SawBladeEditorObject(
-                    {   
-                        radius: 0.5
-                    }, pos
+                itemId: 'saw-blade',
+                templ: (pos: VectorI, data?: any) => new SawBladeEditorObject(
+                    data ? dataSetPos(data, pos) : {
+                        type: 'saw-blade',
+                        custom: {
+                            radius: 0.5
+                        },
+                        geo: {
+                            pos: pos,
+                            width: 1,
+                            height: 1
+                        }
+                    }
                 )
             }
         ]
     },
     {
-        title: 'Command-Points',
+        titleText: 'Command-Points',
+        titleId: 'command-points',
         items: [
             {
                 buttonText: 'Sprechblase',
-                templ: (pos: VectorI) => new CommandPoint(
+                itemId: 'speech-buble',
+                templ: (pos: VectorI, data?: any) => new CommandPoint(
                     {
-                        command: '/jumper/set-speechbuble',
-                        time: 4,
-                        custom: {
-                            text: 'Hello, world!'
-                        }
-                    }, pos
+                        d: {
+                            command: '/jumper/set-speechbuble',
+                            time: 4,
+                            custom: {
+                                text: 'Hello, world!'
+                            }
+                        },
+                        pos: pos
+                    }
                 )
             }
         ]
     }
 ]
+
+export function gameEditorAddStyle(addPath?: [string, string], dupData?: any) {
+    const titleId = addPath ? addPath[0] : undefined
+    const itemId = addPath ? addPath[1] : undefined
+    const type = dupData ? dupData.type : undefined
+
+    let res: AddStyleI = {
+        roundCorners: 5,
+        addText: 'Klicken, um hinzuzufügen.',
+        duplicateText: 'Klicken, um zu duplizieren.',
+        color: 'rgba(255, 200, 100, 0.5)',
+        origin: Vec.vec(0,0),
+        snapType: 'field-corner',
+        width: 1,
+        height: 1,
+        shape: 'rect',
+        scaled: true
+    }
+    
+    if (type === 'command' || titleId === 'command-points') {
+        res = {
+            ...res,
+            scaled: false,
+            origin: Vec.square(0.5),
+            shape: 'circle',
+            color: 'rgba(50, 200, 255, 0.4)',
+            snapType: 'grid-point',
+            snapCoords: 'x',
+            xtremeY: (g) => CommandPoint.commandPointRange().map(i => g.worldCoords(Vec.vec(0, i)).y) as [number, number]
+        }
+    }
+    if (type === 'saw-blade' || itemId === 'saw-blade') {
+        res = {
+            ...res,
+            origin: Vec.square(0.5),
+            shape: 'circle',
+            snapType: 'grid-point'
+        }
+    }
+    
+    res = {
+        ...res,
+        width: dupData ? dupData.geo.width : res.width,
+        height: dupData ? dupData.geo.height : res.height
+    }
+    return res
+}
+
+export function newElementByType(data: any): EditorObjectI {
+    const type = data.type as elementType
+    if (type === 'ground')         return new GroundEditorObject(data)
+    else if (type === 'saw-blade') return new SawBladeEditorObject(data)
+    else if (type === 'score' || type === 'start-end') return new EditorElementGeneric(data)
+    else if (type === 'command') return new CommandPoint(undefined, data)
+    else throw 'Can\'t identify type'
+}

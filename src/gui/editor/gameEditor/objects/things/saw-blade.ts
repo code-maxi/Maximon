@@ -1,17 +1,19 @@
-import { SawBladeDataI, VectorI } from "../../../../../game/dec"
+import { GeoActorI, SawBladeDataI, VectorI } from "../../../../../game/dec"
 import { Vec } from "../../../../adds"
 import { image } from "../../../../images"
 import { gameCanvas } from "../../gameEditor"
 import { ControlPointI } from "../control-points"
 import { moveCPTemplate } from "../element-templates"
-import { EditorObjectGeneric } from "../element-generic"
+import { EditorElementGeneric } from "../element-generic"
 
-export class SawBladeEditorObject extends EditorObjectGeneric<SawBladeDataI> {
+export class SawBladeEditorObject extends EditorElementGeneric<SawBladeDataI> {
     constructor(
-        custom: SawBladeDataI,
-        pos: VectorI
+        data: GeoActorI<SawBladeDataI>
     ) {
-        super('saw-blade', custom, pos, 1, 1, false)
+        super(
+            data,
+            false
+        )
         this.setRadius()
         this.createControlPoints()
     }
@@ -37,7 +39,7 @@ export class SawBladeEditorObject extends EditorObjectGeneric<SawBladeDataI> {
     }
 
     selectPoint(key: string) { super.selectPoint(key) }
-    onlyActiveCPsSelect() { return [ 'radius-cp' ] }
+    onlyActiveCPsSelect() { return [  ] }
 
     setRadius(r?: number) {
         if (r) this.data.custom.radius = r

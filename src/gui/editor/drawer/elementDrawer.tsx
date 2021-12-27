@@ -1,11 +1,9 @@
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
-import { Alert, Button, ButtonGroup, Divider, IconButton, List, ListItem, ListItemButton, ListItemText, ListSubheader, Typography } from "@mui/material";
+import { Alert, Button, ButtonGroup, Divider, List, ListItemButton, ListItemText, ListSubheader, Typography } from "@mui/material";
 import React from "react";
 import { fullElementName } from "../../../game/dec";
-import { elementAddButtonTemplates, elementSettingTemplates } from '../gameEditor/objects/element-templates';
-import { gameCanvas } from '../gameEditor/gameEditor';
+import { AbstractElementSettings, elementAddButtonTemplates } from '../gameEditor/objects/element-templates';
 
 export function ElementDrawer(p: {
     onAddSelect: (e?: string) => void,
@@ -50,13 +48,13 @@ export function ElementAddList(p: {
 }) {
     return <React.Fragment>{ elementAddButtonTemplates.map((t, i) => <List className="tab-1">
         { i !== 0 ? <Divider /> : undefined }
-        <ListSubheader>{ t.title }</ListSubheader>
+        <ListSubheader>{ t.titleText }</ListSubheader>
         {
             t.items.map(ea => <ListItemButton 
-                selected={ p.selected === t.title + '/' + ea.buttonText }
+                selected={ p.selected === t.titleId + '/' + ea.itemId }
                 onClick={() => {
-                    if (p.selected !== t.title + '/' + ea.buttonText) {
-                        p.onAddSelect(t.title + '/' + ea.buttonText)
+                    if (p.selected !== t.titleId + '/' + ea.itemId) {
+                        p.onAddSelect(t.titleId + '/' + ea.itemId)
                     } else p.onAddSelect()
                 }}>
                 <ListItemText> { ea.buttonText } </ListItemText>
@@ -71,17 +69,6 @@ export function ElementSettings(p: {
 }) {
     return <div className="tab-2">
         <Typography className="my-title" variant="subtitle1">Element Einstellungen</Typography>
-        <List>
-            <ListItem secondaryAction={
-                <IconButton color="error" onClick={ () => gameCanvas.removeSelected() }><DeleteRoundedIcon /></IconButton>
-            }>
-                <ListItemText>Element entfernen?</ListItemText>
-            </ListItem>
-            
-            { p.item !== undefined ? elementSettingTemplates.find(t => t.type === p.item.type)!.SettingsGUI({
-                item: p.item,
-                onChange: p.onESUpdate
-            }) : '' }
-        </List>
+        <AbstractElementSettings {...p} />
     </div>
 }

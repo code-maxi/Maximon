@@ -1,30 +1,36 @@
-import { GroundDataI, VectorI } from "../../../../../game/dec"
+import { GeoActorI, GroundDataI, VectorI } from "../../../../../game/dec"
 import { Creative, Vec } from "../../../../adds"
 import { gameCanvas } from "../../gameEditor"
 import { ControlPointI } from "../control-points"
 import { moveCPTemplate } from "../element-templates"
-import { EditorObjectGeneric } from "../element-generic"
+import { EditorElementGeneric } from "../element-generic"
 
-export class GroundEditorObject extends EditorObjectGeneric<GroundDataI> {
+export class GroundEditorObject extends EditorElementGeneric<GroundDataI> {
     oldW = 0
     fixed = false
     oldPos: VectorI
     newPos: VectorI | undefined
 
     constructor(
-        custom: GroundDataI,
-        pos: VectorI
+        data: GeoActorI<GroundDataI>,
+        fix?: boolean
     ) {
-        super('ground', custom, pos, 1, 1, false)
+        super(data, false)
+        
+        this.fixed = fix !== false
+        this.oldPos = data.geo.pos
+
+        if (!this.fixed) {
+            gameCanvas.setTooltip('bottom', {
+                text: 'Nochmal klicken.',
+                style: {
+                    backgroundColor: 'rgba(230, 230, 50, 0.5)',
+                    textColor: 'black'
+                }
+            })
+        }
+        
         this.createControlPoints()
-        this.oldPos = {...pos}
-        gameCanvas.setTooltip('bottom', {
-            text: 'Nochmal klicken.',
-            style: {
-                backgroundColor: 'rgba(230, 230, 50, 0.5)',
-                textColor: 'black'
-            }
-        })
         this.updateCP()
     }
 
