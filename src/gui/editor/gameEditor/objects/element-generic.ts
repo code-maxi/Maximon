@@ -1,16 +1,16 @@
-import { elementType, fullElementName, GeoActorI, GeoDataI, geomShape, VectorI } from "../../../../game/dec"
+import { elementType, fullElementName, GameActorI, GeoActorI, GeoDataI, geomShape, VectorI } from "../../../../game/dec"
 import { Creative, def, Vec } from "../../../adds"
 import { gameCanvas } from "../gameEditor"
 import { ControlPointI, EditorObjectControlPoints } from "./control-points"
 import { EditorObjectParamsI } from "./element-templates"
 
 export class EditorElementGeneric<T> extends EditorObjectControlPoints {
-    data: GeoActorI<T>
+    data: GameActorI<T>
     params: EditorObjectParamsI
     wasIMoved = false
 
     constructor(
-        data: GeoActorI<T>,
+        data: GameActorI<T>,
         createCPs?: boolean
     ) {
         super()
@@ -107,6 +107,7 @@ export class EditorElementGeneric<T> extends EditorObjectControlPoints {
     }
 
     onSelect(b: boolean) {
+        this.params.selected = b
         const list = this.onlyActiveCPsSelect()
         this.controlPoints = this.controlPoints.map(
             cp => list.includes(cp.key) ? { ...cp, active: b } : cp

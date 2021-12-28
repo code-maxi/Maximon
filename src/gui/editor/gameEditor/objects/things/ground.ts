@@ -1,4 +1,4 @@
-import { GeoActorI, GroundDataI, VectorI } from "../../../../../game/dec"
+import { GameActorI, GeoActorI, GroundDataI, VectorI } from "../../../../../game/dec"
 import { Creative, Vec } from "../../../../adds"
 import { gameCanvas } from "../../gameEditor"
 import { ControlPointI } from "../control-points"
@@ -12,7 +12,7 @@ export class GroundEditorObject extends EditorElementGeneric<GroundDataI> {
     newPos: VectorI | undefined
 
     constructor(
-        data: GeoActorI<GroundDataI>,
+        data: GameActorI<GroundDataI>,
         fix?: boolean
     ) {
         super(data, false)

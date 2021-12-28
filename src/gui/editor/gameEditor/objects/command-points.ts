@@ -1,4 +1,4 @@
-import { CommandDataI, editorColors, GeoActorI, GeoDataI, geomShape, VectorI } from "../../../../game/dec";
+import { CommandDataI, editorColors, GameActorI, GeoActorI, GeoDataI, geomShape, VectorI } from "../../../../game/dec";
 import { Creative, def, Num, Vec } from "../../../adds";
 import { gameCanvas } from "../gameEditor";
 import { ControlPointI } from "./control-points";
@@ -37,7 +37,7 @@ export class CommandPoint extends EditorElementGeneric<CommandDataI> {
             d: CommandDataI,
             pos: VectorI
         },
-        c2?: GeoActorI<CommandDataI>
+        c2?: GameActorI<CommandDataI>
     ) {
         super(
             c1 ? {
@@ -51,7 +51,7 @@ export class CommandPoint extends EditorElementGeneric<CommandDataI> {
 
     shape(): geomShape { return 'circle' }
 
-    style() { return commandPointStyle.find(cps => cps[0] === this.custom().command)![1] }
+    style() { return commandPointStyle.find(cps => cps[0] === '/jumper/set-speechbuble')![1] }
     setData(d: any, _?: boolean) { this.data = d }
 
     origin() { return Vec.vec(0.5,0.5) }

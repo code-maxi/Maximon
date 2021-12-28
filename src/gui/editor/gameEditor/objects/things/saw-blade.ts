@@ -1,4 +1,4 @@
-import { GeoActorI, SawBladeDataI, VectorI } from "../../../../../game/dec"
+import { GameActorI, SawBladeDataI, VectorI } from "../../../../../game/dec"
 import { Vec } from "../../../../adds"
 import { image } from "../../../../images"
 import { gameCanvas } from "../../gameEditor"
@@ -8,7 +8,7 @@ import { EditorElementGeneric } from "../element-generic"
 
 export class SawBladeEditorObject extends EditorElementGeneric<SawBladeDataI> {
     constructor(
-        data: GeoActorI<SawBladeDataI>
+        data: GameActorI<SawBladeDataI>
     ) {
         super(
             data,

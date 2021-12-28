@@ -2,14 +2,20 @@ import { def } from "./adds"
 
 export let shortcutCallbacks: ((e: KeyboardEvent, keyUp: boolean) => void)[] = []
 
+export interface ShortcutOptI {
+    ctrlDown?: boolean,
+    shiftDown?: boolean,
+    altDown?: boolean
+}
+
 export function registerShortcut(key: string, opt: { ctrlDown?: boolean, shiftDown?: boolean }, callback: () => void) {
     shortcutCallbacks.push((e, keyUp) => {
         const ctrl = def(false, opt.ctrlDown)
         const shift = def(false, opt.shiftDown)
         if (
-            keyUp 
+            keyUp
             && e.key === key 
-            && ((ctrl && e.ctrlKey) || !ctrl) 
+            && ((ctrl && e.ctrlKey) || !ctrl)
             && ((shift && e.shiftKey) || !shift)
         ) callback()
     })

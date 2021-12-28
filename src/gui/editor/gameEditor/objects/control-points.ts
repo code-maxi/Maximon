@@ -142,7 +142,10 @@ export abstract class EditorObjectControlPoints implements EditorObjectI {
     }
 
     onMouseUp(_evt: MouseEvent, mousePos: VectorI) {
+        console.log('mouse up called')
         this.controlPoints = this.controlPoints.map(cp => ({ ...cp, oldMovingPos: undefined }))
+        console.log(this.controlPoints)
+        console.log()
         this.updateTooltips(mousePos)
     }
 

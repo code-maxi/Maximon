@@ -23,17 +23,20 @@ export interface BoxI {
     h: number
 }
 
-export interface TypeableI {
+export interface AbstractActorI {
     type: elementType
+    custom: any
 }
 
-export interface GameActorI<T> extends TypeableI {
+export interface GeoActorI extends AbstractActorI{
+    geo: GeoDataI
+}
+
+export interface GameActorI<T> extends GeoActorI {
     custom: T
 }
 
-export interface GeoActorI<T> extends GameActorI<T> {
-    geo: GeoDataI
-}
+
 
 export interface GeoDataI {
     width: number,
@@ -53,10 +56,25 @@ export interface SawBladeDataI {
 }
 
 export interface CommandDataI {
+    events: EventDataI[],
+    time: number // x-Axis
+}
+
+export type aviableEventsT = '/jumper/set-speechbuble' | '/jumper/set-gravity' | '/jumper/drop' | '/camera/zoom'
+
+export interface EventDataI {
     command: string,
-    time: number, // x-Axis
     custom: any
 }
+export interface EventDataGenericI<T> extends EventDataI {
+    custom: T
+}
+
+export interface EDCSpeechbubleI { text: string }
+export interface EDCNumberI { numberV: number }
+
+
+
 
 /*
 

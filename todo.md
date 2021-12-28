@@ -18,6 +18,10 @@
 - [ ] Elements – implement classes for others
 - [ ] Element-Selecting – bug
 - [ ] Update Element Settings – bug
+- [ ] Bei Mouse Exit move canceln
+- [x] Implementing Events
+- [ ] Adding Command Point
+- [ ] Don't render whole editor when changeing settings
 
 /////////////
 

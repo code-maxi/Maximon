@@ -137,3 +137,42 @@ body {
     margin-left: auto !important;
     margin-right: auto !important;
 }
+
+.evt-component-list {
+    display: flex;
+    flex-direction: column;
+    & > * {
+        margin-top: 10px;
+        &.evt-component-add-button { margin-top: 15px; }
+        &:first-child { margin-top: 0; }
+
+        &.evt-component-paper {
+            padding: 15px;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: rgb(250,255,255);
+            
+            & > * {
+                flex-grow: 1 1;
+                margin-top: 10px;
+                &:first-child { margin-top: 0; }
+            }
+
+            & > .evt-component-header {
+                display: flex;
+                flex-direction: row;
+                & > *:nth-child(1) { flex: 1 1; }
+                & > *:nth-child(2) { flex: 0 0; }
+            }
+        }
+
+        &.evt-component-add-button {
+            width: max-content;
+            margin-left: auto;
+            margin-right: 0;
+        }
+    }
+}

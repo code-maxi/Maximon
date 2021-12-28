@@ -6,7 +6,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { TabPanel } from "../adds";
 import { ElementDrawer } from "./drawer/elementDrawer";
-import { SzeneDataOptI } from '../../game/dec';
+import { AbstractActorI, SzeneDataOptI } from '../../game/dec';
 import { gameCanvas, GameEditor, gameEditor } from './gameEditor/gameEditor';
 import { loadImages } from '../images';
 import { initKeys } from '../shortcuts';
@@ -20,7 +20,7 @@ export class Editor extends React.Component<{}, {
     addSelectedItem?: string,
     mode: number,
     tab: number,
-    selectedItem?: any
+    selectedItem?: AbstractActorI
 }> {
     gameSettings: SzeneDataOptI = {
         name: '',
@@ -50,8 +50,8 @@ export class Editor extends React.Component<{}, {
         initKeys()
     }
 
-    setES(o: any, updateState?: boolean, updateGame?: boolean) {
-        if (updateGame === true) gameEditor.gameCanvas?.updateSelected(o)
+    setES(o?: AbstractActorI, updateState?: boolean, updateGame?: boolean) {
+        if (updateGame === true && o) gameEditor.gameCanvas?.updateSelected(o)
         if (updateState === true) this.setState({
             ...this.state,
             selectedItem: o

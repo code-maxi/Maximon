@@ -1,7 +1,7 @@
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import React from "react";
-import { geomShape, SzeneDataOptI, VectorI } from "../../../game/dec";
+import { AbstractActorI, geomShape, SzeneDataOptI, VectorI } from "../../../game/dec";
 import { Creative, directionT, modulo, TextBorderStyleI, Vec } from "../../adds";
 import { Button, ButtonGroup, IconButton } from '@mui/material';
 import { cellSize, editor } from '../editor';
@@ -115,7 +115,7 @@ export class GameEditorCanvas {
         addPath?: [string, string],
         addingStyle: AddStyleI,
         pos: VectorI,
-        duplicateObjectData?: any
+        duplicateObjectData?: AbstractActorI
     } | undefined
 
     private selectedElement: EditorObjectI | undefined
@@ -190,19 +190,6 @@ export class GameEditorCanvas {
             this.paint()
         }
 
-        this.canvas.onmouseup = evt => {
-            this.setCanvasCursor(evt)
-            if (evt.button >= 0 && evt.button <= this.buttonsPressed.length) {
-                this.buttonsPressed[evt.button] = false
-                this.buttonsPos[evt.button] = undefined
-            }
-            this.setCursor('default')
-
-            elementsMouseEvent(o => o.onMouseUp(evt, this.cursor))
-
-            this.paint()
-        }
-
         this.canvas.onmousemove = evt => {
             this.setCanvasCursor(evt)
 
@@ -216,6 +203,24 @@ export class GameEditorCanvas {
 
             elementsMouseEvent(o => o.onMouseMove(evt, this.buttonsPos, this.cursor))
 
+            this.paint()
+        }
+
+        this.canvas.onmouseup = (evt) => {
+            if (evt.button >= 0 && evt.button <= this.buttonsPressed.length) {
+                this.buttonsPressed[evt.button] = false
+                this.buttonsPos[evt.button] = undefined
+            }
+
+            this.setCursor('default')
+
+            elementsMouseEvent(o => o.onMouseUp(evt, this.cursor))
+        }
+
+        this.canvas.onmouseout = () => {
+            this.buttonsPressed = this.buttonsPressed.map(_ => false)
+            this.buttonsPos = this.buttonsPos.map(_ => undefined)
+            this.setCursor('default')
             this.paint()
         }
 
@@ -349,25 +354,19 @@ export class GameEditorCanvas {
         }
     }
 
-    updateSelected(d: any) {
+    updateSelected(d: AbstractActorI) {
         this.selectedElement?.setData(d, true)
         this.paint()
     }
 
     select(o: EditorObjectI) {
-        if (this.selectedElement && this.selectedElement !== o) {
-            this.selectedElement.params.selected = false
-            this.selectedElement.onSelect(false)
-        }
+        this.elements.forEach(e => e.onSelect(false))
         
         if (this.selectedElement === o) {
-            this.selectedElement.params.selected = false
-            this.selectedElement.onSelect(false)
             this.selectedElement = undefined
         }
         else {
             this.selectedElement = o
-            this.selectedElement.params.selected = true
             this.selectedElement.onSelect(true)
         }
 

@@ -2,14 +2,14 @@ import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import { Alert, Button, ButtonGroup, Divider, List, ListItemButton, ListItemText, ListSubheader, Typography } from "@mui/material";
 import React from "react";
-import { fullElementName } from "../../../game/dec";
+import { AbstractActorI, fullElementName } from "../../../game/dec";
 import { AbstractElementSettings, elementAddButtonTemplates } from '../gameEditor/objects/element-templates';
 
 export function ElementDrawer(p: {
     onAddSelect: (e?: string) => void,
-    onESUpdate: (e: any) => void,
+    onESUpdate: (e: AbstractActorI) => void,
     onModeChange: (e: number) => void,
-    selectedItem?: any,
+    selectedItem?: AbstractActorI,
     addSelected?: string,
     mode: number
 }) {
@@ -64,8 +64,8 @@ export function ElementAddList(p: {
 }
 
 export function ElementSettings(p: {
-    onESUpdate: (e: any) => void
-    item: any
+    onESUpdate: (e: AbstractActorI) => void
+    item: AbstractActorI
 }) {
     return <div className="tab-2">
         <Typography className="my-title" variant="subtitle1">Element Einstellungen</Typography>

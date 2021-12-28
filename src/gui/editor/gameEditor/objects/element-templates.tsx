@@ -1,5 +1,5 @@
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
-import { elementType, GeoActorI, GroundDataI, groundTypeI, ScoreDataI, textGroundType, VectorI } from "../../../../game/dec"
+import { AbstractActorI, CommandDataI, elementType, EventDataI, GameActorI, GeoActorI, GroundDataI, groundTypeI, ScoreDataI, textGroundType, VectorI } from "../../../../game/dec"
 import { SwitchButtonGroup, Vec } from "../../../adds"
 import { AddStyleI, gameCanvas } from "../gameEditor"
 import { CommandPoint } from "./command-points"
@@ -10,6 +10,7 @@ import { GroundEditorObject } from "./things/ground"
 import { SawBladeEditorObject } from "./things/saw-blade"
 import { EditorElementGeneric } from "./element-generic"
 import FileCopyIcon from '@mui/icons-material/FileCopy';
+import { EventList } from '../events';
 
 export interface EditorObjectParamsI {
     key: elementType,
@@ -20,8 +21,8 @@ export interface EditorObjectParamsI {
 
 export interface EditorObjectI {
     params: EditorObjectParamsI
-    getData(): any
-    setData(d: any, fromGUI?: boolean): void
+    getData(): AbstractActorI
+    setData(d: AbstractActorI, fromGUI?: boolean): void
     paint(g: CanvasRenderingContext2D): void
     includesPoint(v: VectorI): boolean
     onMouseDown(evt: MouseEvent, mousePos: VectorI): void
@@ -75,8 +76,8 @@ export interface EditorElementTemplateI<D> { // D = Data-Type
 }
 
 export function AbstractElementSettings(p: {
-    onESUpdate: (e: any) => void
-    item: any
+    onESUpdate: (e: AbstractActorI) => void
+    item: AbstractActorI
 }) {
     return <List>
         <ListItem secondaryAction={
@@ -104,8 +105,8 @@ export const elementSettingTemplates: EditorElementTemplateI<any>[] = [
     {
         type: 'ground',
         SettingsGUI: (p: {
-            item: GeoActorI<GroundDataI>,
-            onChange: (cd: GeoActorI<GroundDataI>) => void
+            item: GameActorI<GroundDataI>,
+            onChange: (cd: GameActorI<GroundDataI>) => void
         }) => {
             const [gType, setGType] = React.useState<groundTypeI>(p.item.custom.groundType)
             const [vertical, setVertical] = React.useState(p.item.custom.vertical)
@@ -182,7 +183,22 @@ export const elementSettingTemplates: EditorElementTemplateI<any>[] = [
     },
     {
         type: 'command',
-        SettingsGUI: () => undefined,
+        SettingsGUI: (p: {
+            item: GameActorI<CommandDataI>,
+            onChange: (cd: GameActorI<CommandDataI>) => void
+        }) => {
+            const [evts, setEvts] = React.useState<EventDataI[]>(p.item.custom.events)
+            return <EventList evts={evts} onEvtChange={e => {
+                setEvts(e)
+                p.onChange({
+                    ...p.item,
+                    custom: {
+                        ...p.item.custom,
+                        events: e
+                    }
+                })
+            }} />
+        },
     }
 ]
 
@@ -427,11 +443,8 @@ export const elementAddButtonTemplates: {
                 templ: (pos: VectorI, data?: any) => new CommandPoint(
                     {
                         d: {
-                            command: '/jumper/set-speechbuble',
                             time: 4,
-                            custom: {
-                                text: 'Hello, world!'
-                            }
+                            events: []
                         },
                         pos: pos
                     }
@@ -441,7 +454,7 @@ export const elementAddButtonTemplates: {
     }
 ]
 
-export function gameEditorAddStyle(addPath?: [string, string], dupData?: any) {
+export function gameEditorAddStyle(addPath?: [string, string], dupData?: AbstractActorI) {
     const titleId = addPath ? addPath[0] : undefined
     const itemId = addPath ? addPath[1] : undefined
     const type = dupData ? dupData.type : undefined
@@ -480,10 +493,12 @@ export function gameEditorAddStyle(addPath?: [string, string], dupData?: any) {
         }
     }
     
+    const da = dupData as any
+
     res = {
         ...res,
-        width: dupData ? dupData.geo.width : res.width,
-        height: dupData ? dupData.geo.height : res.height
+        width: da?.geo ? da.geo.width : res.width,
+        height: da?.geo ? da.geo.height : res.height
     }
     return res
 }
